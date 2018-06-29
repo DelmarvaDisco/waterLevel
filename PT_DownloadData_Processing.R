@@ -25,14 +25,13 @@
 rm(list=ls(all=TRUE))
 
 #Define Working Directory
-setwd("Z:\\Research Projects/Delmarva_Carbon/Pressure_Transducers/Download_Data/20171020_Downloads")
+setwd("//nfs/njones-data/Research Projects/Delmarva_Carbon/Pressure_Transducers/Download_Data/20180624_Downloads")
 
 #Load Required Packages
 require("dplyr")         #data processing
 
 #Download well log file
 master<-read.csv("well_log.csv")
-master<-na.omit(master)
 
 ####################################################################################
 # 2. Initial Cleaning  --------------------------------------------------------
@@ -78,7 +77,7 @@ fun<-function(n){
 }
 
 #Create list of files
-logs<-list.files()[list.files()!="well_log.csv" & list.files()!="intermediate" & list.files()!="Thumbs.db"  ]
+logs<-list.files()[list.files()!="well_log.csv" & list.files()!="intermediate" & list.files()!="Thumbs.db" & list.files()!= "HOBO"]
 
 #Create temp file
 unlink("intermediate", recursive = T)
@@ -92,8 +91,8 @@ output<-lapply(seq(1, length(logs)), fun)
 output<-do.call(rbind, output)
 output<-data.frame(output)
 colnames(output)<-c("Sonde_ID", "Initial_Check")
-master<-left_join(master, output, by="Sonde_ID")
-master[is.na(master$Initial_Check),]
+master<-full_join(master, output, by="Sonde_ID")
+master
 
 ####################################################################################
 # 3. Calculate water depth----------------------------------------------------------
