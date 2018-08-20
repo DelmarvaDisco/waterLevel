@@ -1,0 +1,9 @@
+---
+title: "Database Setup"
+output: 
+  html_notebook:
+    fig_width: 6
+---
+
+The goal of htis notebook is to setup an SQL light database to house water level data. We are utilizing the [ODM2 database structure](http://www.odm2.org/) and the [rodm2 package](https://khondula.github.io/rodm2/). 
+
