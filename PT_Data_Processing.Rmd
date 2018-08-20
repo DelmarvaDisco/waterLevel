@@ -1,0 +1,289 @@
+---
+title: "R Notebook"
+output: 
+  html_notebook:
+    fig_width: 6
+---
+
+```{r setup, include=FALSE}
+#Clear Memory
+rm(list=ls(all=TRUE))
+
+#Load Required Packages
+library("dplyr")         #data processing
+library('knitr')
+
+#Define WD
+working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/20171020_Downloads/"
+
+#Download Data
+master<-read.csv(paste0(working_dir,"well_log.csv"))
+
+#Create temp file
+dir.create(paste0(working_dir,"temp"))
+```
+
+```{r pt-data-wrangling,echo=F}
+#create function to download logs, clean, and rewrite in temp folder
+fun<-function(n){
+  #Read data
+  temp<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
+  
+  #Determine serial number
+  serial_number<-colnames(temp)[grep("LGR",colnames(temp))][1]  #Find collumn name with serial number
+  serial_number<-substr(serial_number,   #isolate serial number
+                        gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
+                        nchar(serial_number)-1) #stop
+  serial_number<-as.numeric(serial_number) #return numeric data type
+  
+  #Determine timezone offset in seconds
+  time_offset<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
+  time_offset<-as.numeric(substr(time_offset, 16,18))*3600+as.numeric(substr(time_offset, 19,20))*60
+  
+  #determine pressure and temp units. If wrong, throw error [for now...]
+  press_units<-colnames(temp)[grep("kPa",colnames(temp))][1] 
+  press_units<-substr(press_units,   #isolate temperature units
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+10, #Start
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+12) #stop
+  if(press_units!="kPa"){
+    warning(paste0("Pressure units are incorrect for PT: ",serial_number," (", logs[n],")"), immediate.=T)
+    stop()
+  }
+  temp_units<-colnames(temp)[grep("Temp",colnames(temp))][1] 
+  temp_units<-substr(temp_units,   #isolate temperature units
+                     gregexpr("Temp", temp_units)[[1]][1]+7, #Start
+                     gregexpr("Temp", temp_units)[[1]][1]+7) #stop
+  if(temp_units!="C"){
+    warning(paste0("Temperature units are incorrect for PT: ",serial_number," (", logs[n],")"), immediate.=T)
+    stop()
+  }
+  
+  #create temp collumn [for now this is static, we may need to use collumn search similar to above..]
+  temp<-temp[,c(2,3,4)]
+  colnames(temp)<-c("DateTime_GMT", "abs_pres_kPa", "temp_c")
+  
+  #format date_time
+  temp$DateTime_GMT<-strptime(temp$DateTime_GMT, "%m/%d/%y %I:%M:%S %p")-time_offset
+  temp$DateTime_GMT<-format.Date(temp$DateTime_GMT, "%m/%d/%Y %H:%M:%S")
+  
+  #Check for existing files
+  if(file.exists(paste0(working_dir,"temp/",serial_number,"_initial",".csv"))==TRUE){
+    warning(paste0("Multiple files exists for ",serial_number," : ", logs[n]), immediate.=T)
+    stop()
+  }
+  
+  #Export csv file
+  write.csv(temp, paste0(working_dir,"temp/",serial_number,"_initial",".csv"))
+  
+  #exprort serial number for completion check
+  c(serial_number, 1)
+}
+
+#Create list of PT files
+logs<-list.files(paste0(working_dir,"export"))
+
+#Run function 
+output<-lapply(seq(1, length(logs)), fun)
+
+#Check to see if missing any wells
+output<-do.call(rbind, output)
+output<-data.frame(output)
+colnames(output)<-c("Sonde_ID", "Initial_Check")
+master<-full_join(master, output, by="Sonde_ID")
+```
+
+```{r baro-data-wrangling, echo=F}
+fun<-function(n){
+  #Read data
+  temp<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
+  
+  #Determine serial number
+  serial_number<-colnames(temp)[grep("LGR",colnames(temp))][1]  #Find collumn name with serial number
+  serial_number<-substr(serial_number,   #isolate serial number
+                        gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
+                        nchar(serial_number)-1) #stop
+  serial_number<-as.numeric(serial_number) #return numeric data type
+  
+  #Determine timezone offset in seconds
+  time_offset<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
+  time_offset<-as.numeric(substr(time_offset, 16,18))*3600+as.numeric(substr(time_offset, 19,20))*60
+  
+  #determine pressure and temp units. If wrong, throw error [for now...]
+  press_units<-colnames(temp)[grep("kPa",colnames(temp))][1] 
+  press_units<-substr(press_units,   #isolate temperature units
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+10, #Start
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+12) #stop
+  if(press_units!="kPa"){
+    warning(paste0("Pressure units are incorrect for PT: ",serial_number," (", logs[n],")"), immediate.=T)
+    stop()
+  }
+  temp_units<-colnames(temp)[grep("Temp",colnames(temp))][1] 
+  temp_units<-substr(temp_units,   #isolate temperature units
+                     gregexpr("Temp", temp_units)[[1]][1]+7, #Start
+                     gregexpr("Temp", temp_units)[[1]][1]+7) #stop
+  if(temp_units!="C"){
+    warning(paste0("Temperature units are incorrect for PT: ",serial_number," (", logs[n],")"), immediate.=T)
+    stop()
+  }
+  
+  #create temp collumn [for now this is static, we may need to use collumn search similar to above..]
+  temp<-temp[,c(2,3,4)]
+  colnames(temp)<-c("DateTime_GMT", "abs_pres_kPa", "temp_c")
+  
+  #format date_time
+  temp$DateTime_GMT<-strptime(temp$DateTime_GMT, "%m/%d/%y %I:%M:%S %p")-time_offset
+  temp$DateTime_GMT<-format.Date(temp$DateTime_GMT, "%m/%d/%Y %H:%M:%S")
+  
+  #Check for existing files
+  if(file.exists(paste0(working_dir,"temp/",serial_number,"_initial",".csv"))==TRUE){
+    file.rename(paste0(working_dir,"temp/",serial_number,"_initial",".csv"),
+                paste0(working_dir,"temp/",serial_number,"_baro",".csv"))
+  }else{
+    #Export csv file
+    write.csv(temp, paste0(working_dir,"temp/",serial_number,"_baro",".csv"))
+  }
+  
+  #Export baro file name
+  data.frame(logs[n], paste0(serial_number,"_baro.csv"))
+}
+
+#Create list of PT files
+logs<-unique(master$baro_file)
+
+#Run function 
+output<-lapply(seq(1, length(logs)), fun)
+
+#Check to see if missing any wells
+output<-do.call(rbind, output)
+output<-data.frame(output)
+colnames(output)<-c("baro_file", "baro_file_temp")
+master<-left_join(master, output, by="baro_file")
+```
+
+```{r water-level-calculation, echo=F}
+#Create function to estimate water depth
+fun<-function(n){
+  #define PT serioal number
+  serial_number<-as.numeric(paste(substr(logs[n],1, nchar(logs[n])-12)))
+  site<-master$Site.Name[master$Sonde_ID==serial_number]
+  
+  #Read PT file
+  df<-read.csv(paste0(working_dir,"temp/",logs[n]))
+  df$DateTime_GMT<-strptime(df$DateTime_GMT, "%m/%d/%Y %H:%M:%S")
+  df$DateTime_GMT<-(as.POSIXct(df$DateTime_GMT))
+  
+  #Read baro file
+  baro<-read.csv(paste0(working_dir,"temp/",master$baro_file_temp[master$Sonde_ID==serial_number]))
+  baro$DateTime_GMT<-strptime(baro$DateTime_GMT, "%m/%d/%Y %H:%M:%S")
+  baro$DateTime_GMT<-(as.POSIXct(baro$DateTime_GMT))
+  
+  #Create interpolation function for baro file
+  baro_fun<-approxfun(baro$abs_pres_kPa~baro$DateTime_GMT)
+  
+  #Add barometric pressure to df
+  df$atm_pres_kPa<-baro_fun(df$DateTime_GMT)
+  
+  #Estimate gage pressure
+  df$gage_pres_kPa<-df$abs_pres_kPa-df$atm_pres_kPa
+  
+  #Estimate pressure head [m]
+  df$level_m<-df$gage_pres_kPa/9.81
+  
+  #Export df
+  write.csv(df, paste0(working_dir,"temp/",serial_number,"_waterlevel",".csv"))
+  
+  #exprort serial number for completion check
+  c(serial_number, 1)
+}
+
+#Create list of PT files 
+logs<-list.files(paste0(working_dir,"temp/"))
+logs<-logs[grep("_initial",logs)]
+
+#Run function 
+output<-lapply(seq(1, length(logs)), fun)
+output<-data.frame(do.call(rbind, output))
+colnames(output)<-c("Sonde_ID", "water_level")
+master<-left_join(master, output, by="Sonde_ID")
+```
+
+
+
+
+
+
+
+
+
+
+From here, remove 1 hour within download
+Setup interactive plots
+Insert into database
+
+
+
+
+```{r, fig.width=12}
+#Read libraries
+library(dygraphs)
+library(ggplot2)
+library(xts)
+
+dygraph(df) %>%
+  dyRangeSelector() %>%
+  dyLegend() %>%
+  dyOptions(strokeWidth = 1.5) %>%
+  #dyRoller(rollPeriod = 5) %>% 
+  dyAxis("y", label = "Water Level [m]")
+
+```
+
+
+
+```{r}
+#Read libraries
+library(dygraphs)
+library(ggplot2)
+library(xts)
+
+#subset master to just wetlands (for now...)
+master<-master[grep("Wetland Well Shallow",master$Site.Name),]
+
+#Gather Data
+for(i in 1:length(master[,1])){
+  print(i)
+  serial_number<-master$Sonde_ID[i]
+  temp<-read.csv(paste0("initial_processing/",serial_number,".csv"))
+  temp<-temp[,c("DateTime_GMT","level_m")]
+  temp$site<-substr(master$Site.Name[i],1,2)
+  temp$DateTime_GMT<-strptime(temp$DateTime_GMT,"%Y-%m-%d %H:%M:%S")
+  temp<-temp[-c(1:5),]
+  temp<-na.omit(temp)
+  temp_max<-max(temp$level_m)
+  temp$level_rel<-temp$level_m/temp_max
+  if(i==1){
+    df<-temp
+  }else{
+    df<-rbind(df,temp)
+  }
+}
+
+#Format df
+df_spread <- df %>% 
+    dplyr::select(DateTime_GMT, site, level_rel) %>%
+    tidyr::spread(key = site, value = level_rel)
+df_xts<-xts(df_spread, order.by=df_spread$DateTime_GMT)
+df_xts<-df_xts[,-1]
+
+#Plot
+dygraph(df_xts, main = "Jackson Lane Wetland Water Level") %>%
+  dyRangeSelector() %>%
+  dyLegend() %>%
+  dyOptions(strokeWidth = 1.5) %>%
+  #dyRoller(rollPeriod = 5) %>% 
+  dyHighlight(highlightCircleSize = 5, 
+                  highlightSeriesBackgroundAlpha = 0.2,
+                  hideOnMouseOut = FALSE) %>%
+  dyAxis("y", label = "Relative Water Level [% of max]")#, valueRange=c(1.6,2.1))
+```
+
