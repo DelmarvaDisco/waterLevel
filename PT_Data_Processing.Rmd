@@ -31,6 +31,7 @@ library('knitr')
 
 #Define WD
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/20171020_Downloads/"
+db_loc<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/odm2.sqlite"
 
 #Download Data
 master<-read.csv(paste0(working_dir,"well_log.csv"))
@@ -144,7 +145,7 @@ fun<-function(n){
   
   #create temp collumn [for now this is static, we may need to use collumn search similar to above..]
   temp<-temp[,c(2,3,4)]
-  colnames(temp)<-c("DateTime_GMT", "abs_pres_kPa", "temp_c")
+  colnames(temp)<-c("DateTime_GMT", "atm_pres_kPa", "temp_c")
   
   #format date_time
   temp$DateTime_GMT<-strptime(temp$DateTime_GMT, "%m/%d/%y %I:%M:%S %p")-time_offset
@@ -152,8 +153,10 @@ fun<-function(n){
   
   #Check for existing files
   if(file.exists(paste0(working_dir,"temp/",serial_number,"_initial",".csv"))==TRUE){
-    file.rename(paste0(working_dir,"temp/",serial_number,"_initial",".csv"),
-                paste0(working_dir,"temp/",serial_number,"_baro",".csv"))
+    file.remove(paste0(working_dir,"temp/",serial_number,"_initial",".csv"))
+    write.csv(temp, paste0(working_dir,"temp/",serial_number,"_baro",".csv"))
+    #file.rename(paste0(working_dir,"temp/",serial_number,"_initial",".csv"),
+    #            paste0(working_dir,"temp/",serial_number,"_baro",".csv"))
   }else{
     #Export csv file
     write.csv(temp, paste0(working_dir,"temp/",serial_number,"_baro",".csv"))
@@ -194,7 +197,7 @@ fun<-function(n){
   baro$DateTime_GMT<-(as.POSIXct(baro$DateTime_GMT))
   
   #Create interpolation function for baro file
-  baro_fun<-approxfun(baro$abs_pres_kPa~baro$DateTime_GMT)
+  baro_fun<-approxfun(baro$atm_pres_kPa~baro$DateTime_GMT)
   
   #Add barometric pressure to df
   df$atm_pres_kPa<-baro_fun(df$DateTime_GMT)
@@ -203,7 +206,7 @@ fun<-function(n){
   df$gage_pres_kPa<-df$abs_pres_kPa-df$atm_pres_kPa
   
   #Estimate pressure head [m]
-  df$level_m<-df$gage_pres_kPa/9.81
+  df$water_level_m<-df$gage_pres_kPa/9.81
   
   #Export df
   write.csv(df, paste0(working_dir,"temp/",serial_number,"_waterlevel",".csv"))
@@ -223,6 +226,62 @@ colnames(output)<-c("Sonde_ID", "water_level")
 master<-left_join(master, output, by="Sonde_ID")
 ```
 
+
+
+```{r db-upload, echo=F}
+#Create function to upload relevant data into database
+fun<-function(n){
+  #define PT serioal number
+  serial_number<-as.numeric(paste(substr(logs[n],1, nchar(logs[n])-15)))
+  site<-master$Site.Name[master$Sonde_ID==serial_number]
+  
+  #Read PT file
+  df<-read.csv(paste0(working_dir,"temp/",logs[n]))
+  df$DateTime_GMT<-(as.POSIXct(df$DateTime_GMT))
+  df$Timestamp<-df$DateTime_GMT
+  
+  #format pt file
+  df<-df[,c("Timestamp","abs_pres_kPa","atm_pres_kPa","gage_pres_kPa","water_level_m")]
+  df<-as_tibble(df)
+  
+  #Create variable list
+  vars_list<-list("abs_pres_kPa",
+                  "atm_pres_kPa" ,
+                  "gage_pres_kPa" ,
+                  "water_level_m" 
+                  )
+  
+  #Connect to database
+  db<-dbConnect(RSQLite::SQLite(), paste0(db_loc))
+  
+  #Upload to database!
+  db_insert_results_ts(db = db, # database connecton
+                       datavalues = df, # data frame of time series data
+                       method = "PT Data Download", 
+                       site_code = site, 
+                       variables = vars_list, 
+                       sampledmedium = "Water"#, # from medium controlled vocabulary
+                       #actionby = "Nate", # optional
+                       #equipment_name = serial_number # optional
+                       )
+  #Notes
+    #Need to addd myself to the database before entering
+    #there seems to be a glitch with equipment name
+    #if you use "describe" function before hand, you only put variable name in variables list
+  
+  #Disconnect from database
+  RSQLite::dbDisconnect(db)
+}
+
+#Create list of PT files 
+logs<-list.files(paste0(working_dir,"temp/"))
+logs<-logs[grep("_waterlevel",logs)]
+
+#Run function 
+output<-lapply(seq(1, length(logs)), fun)
+
+
+```
 
 
 
