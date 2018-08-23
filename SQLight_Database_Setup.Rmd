@@ -1,9 +1,140 @@
 ---
 title: "Database Setup"
-output: 
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
   html_notebook:
-    fig_width: 6
+    toc: yes
+    toc_float: yes
 ---
 
 The goal of htis notebook is to setup an SQL light database to house water level data. We are utilizing the [ODM2 database structure](http://www.odm2.org/) and the [rodm2 package](https://khondula.github.io/rodm2/). 
+
+#Step 1: Create ODM2 Database
+First, we need to setup our workspace and configure an SQLight file for the ODM2 database structure!
+```{r setup, warning = FALSE, message = FALSE, results='hide'}
+
+#Define working dir
+working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
+
+#Download rodm2 package (note, this may take a few minutes!)
+library(devtools)
+devtools::install_github("khondula/rodm2")
+library(rodm2)
+
+#Create SQLight databse (only do this once)
+db <- create_sqlite(dir = working_dir, connect = T)
+
+#Connect to databse
+#db<-dbConnect(RSQLite::SQLite(), paste0(working_dir,"odm2.sqlite"))
+```
+
+#Step 2: Configure database for our study sites
+
+##2.1 Describe Equipment
+Use the [db_describe_equipment](https://khondula.github.io/rodm2/reference/db_describe_equipment.html) function to insert pressure transducer information into the databse. 
+
+Below is the equipment infromation and the wrapper function used to import it into the databse.  
+```{r equipment-table, echo=F}
+equipment<-read.csv(paste0(working_dir,"Database Information/equipment.csv"))
+equipment
+```
+
+```{r equipment-describe, warning = FALSE, message = FALSE, results='hide'}
+#Create wrapper function for the db_describe_equipment
+fun<-function(n){db_describe_equipment(db, 
+                    equip_name    =   equipment$serial_no[n], 
+                    serial_no     =   equipment$serial_no[n],
+                    model_name    =   "U20 Pressure Transducer",
+                    vendor        =   "Onset",
+                    manufacturer  =   "HOBO",
+                    equipment_type=   "pressureTransducer",
+                    owner_first   =   "Margaret",
+                    owner_last    =   "Palmer",
+                    owner_email   =   "mpalmer@sesync.org")}
+  
+#intiate function
+lapply(seq(1, length(equipment[,1])), fun)
+```
+
+##2.2 Describe Sites
+Use the [db_describe_site](https://khondula.github.io/rodm2/reference/db_describe_site.html) function to insert pressure transducer sites into the database. 
+
+Below is the site information and wrapper function used to import it into the database. 
+```{r sites-table, echo=F}
+sites<-read.csv(paste0(working_dir,"Database Information/sites.csv"))
+sites
+```
+
+```{r sites-describe, warning = FALSE, message = FALSE, results='hide'}
+#Create wrapper function for the db_describe_equipment
+fun<-function(n){db_describe_site(db, site_code = sites$site_code[n])}
+  
+#Inititate function
+lapply(seq(1, length(sites[,1])), fun)
+```
+
+##2.3 Describe Method
+Use the [db_describe_method](https://khondula.github.io/rodm2/reference/db_describe_method.html) function to describe pressure transducer deployment method. Note, we are using the "[dataRetrieval](http://vocabulary.odm2.org/methodtype/dataRetrieval/)" method from the controlled vocabulary. 
+
+```{r method-table, warning = FALSE, message = FALSE, results='hide'}
+#Create wrapper function for the db_describe_equipment
+db_describe_method(db, 
+                   methodname = "PT Data Download",
+                   methodcode =  "PT_Download",
+                   methodtypecv = "dataRetrieval")
+```
+
+##2.3 Describe Variables
+Use the [db_describe_variable](https://khondula.github.io/rodm2/reference/db_describe_variable.html) function to describe variables that are going to be included in the database.
+
+```{r variable-describe, warning = FALSE, message = FALSE, results='hide'}
+#Barometric Pressure (from baro logger)
+db_describe_variable(db, 
+                     variabletypecv = "Hydrology",
+                     variablecode   = "atm_pres_kPa",
+                     variablenamecv = "barometricPressure")
+
+#Absolute Pressure
+db_describe_variable(db, 
+                     variabletypecv = "Hydrology",
+                     variablecode   = "abs_pres_kPa",
+                     variablenamecv = "pressureAbsolute")
+
+#Gage Pressure
+db_describe_variable(db, 
+                     variabletypecv = "Hydrology",
+                     variablecode   = "gage_pres_kPa",
+                     variablenamecv = "pressureGauge")
+
+#Water Collumn Depth 
+db_describe_variable(db, 
+                     variabletypecv = "Hydrology",
+                     variablecode   = "water_level_m",
+                     variablenamecv = "waterColumnEquivalentHeightBarometric")
+
+#Offset (to correct water level to water depth)
+db_describe_variable(db, 
+                     variabletypecv = "Hydrology",
+                     variablecode   = "offset_m",
+                     variablenamecv = "offset")
+
+#Water Depth (ground surface = 0, positive values indicate inundation)
+db_describe_variable(db, 
+                     variabletypecv = "Hydrology",
+                     variablecode   = "water_depth_m",
+                     variablenamecv = "waterDepth")
+```
+
+#Set 3: Go collect data!
+Now that the database is setup, go collect you some emperical data!!!!
+
+Note, there are upcoming worksheets that describe how to insert data into the database. 
+
+```{r disconnet, warning = FALSE, message = FALSE, results='hide'}
+#Disconnect from the database
+RSQLite::dbDisconnect(db)
+```
 
