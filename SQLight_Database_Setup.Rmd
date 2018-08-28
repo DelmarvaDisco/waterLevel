@@ -23,12 +23,12 @@ working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
 library(devtools)
 devtools::install_github("khondula/rodm2")
 library(rodm2)
+library(RSQLite)
+library(DBI)
+load("~/db_get_water_level_ts.R")
 
 #Create SQLight databse (only do this once)
 db <- create_sqlite(dir = working_dir, connect = T)
-
-#Connect to databse
-#db<-dbConnect(RSQLite::SQLite(), paste0(working_dir,"odm2.sqlite"))
 ```
 
 #Step 2: Configure database for our study sites
@@ -77,7 +77,7 @@ lapply(seq(1, length(sites[,1])), fun)
 ```
 
 ##2.3 Describe Method
-Use the [db_describe_method](https://khondula.github.io/rodm2/reference/db_describe_method.html) function to describe pressure transducer deployment method. Note, we are using the "[dataRetrieval](http://vocabulary.odm2.org/methodtype/dataRetrieval/)" method from the controlled vocabulary. 
+Use the [db_describe_method](https://khondula.github.io/rodm2/reference/db_describe_method.html) function to describe pressure transducer deployment method. Note, we are using the "[Instrument deployment](http://vocabulary.odm2.org/methodtype/InstrumentDeployment/)" method from the controlled vocabulary. Atleast inititially, this is required for use with the rodm2 package.  
 
 ```{r method-table, warning = FALSE, message = FALSE, results='hide'}
 #Create wrapper function for the db_describe_equipment
