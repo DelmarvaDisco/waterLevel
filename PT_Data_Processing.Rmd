@@ -5,6 +5,8 @@ output:
     fig_width: 6
 ---
 
+To do: add check for site name and instrument names...
+
     The goal of this notebook is to organize, process, and QAQC raw pressure transducer data. To use this worksheet, save it in the directory of interest.  This directory should contain both an export folder and well log file. The export folder should contain .csv files with raw pressure values exported from the HOBO software, and the well log file contains pertinant informtation such as well name, associated baro logger file, and water level dimensions. 
     
     Below are breif descriptions of each code chunk:
