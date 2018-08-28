@@ -28,10 +28,17 @@ To do: add check for site name and instrument names...
 rm(list=ls(all=TRUE))
 
 #Load Required Packages
-library("dplyr")         #data processing
-library('knitr')
+library(dplyr)   
+library(devtools)
+library(RSQLite)
+library(DBI)
 
-#Define WD
+#Load Palmer Lab tools
+source("db_get_water_level_ts.R")
+devtools::install_github("khondula/rodm2")
+library(rodm2)
+
+#Define working directory and database location
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/20171020_Downloads/"
 db_loc<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/odm2.sqlite"
 
@@ -40,62 +47,108 @@ master<-read.csv(paste0(working_dir,"well_log.csv"))
 
 #Create temp file
 dir.create(paste0(working_dir,"temp"))
+
+#Connect to database
+db<-dbConnect(SQLite(), paste0(db_loc))
+```
+
+```{r initial-checks, echo=F}
+#Check to make sure site names are in DB-----------------------------------------------------------------------
+a<-as.matrix(master[,"Site_Name"], ncol=1)
+b<-as.matrix(dbGetQuery(db,"SELECT SamplingFeatureCode FROM SamplingFeatures"))
+if(length(a[!(a %in% b)])!=0){
+  warning(paste0("Site Names in Well Log and Database do not match!!"))
+  print(a[!(a %in% b)])
+}else{
+  "Site Names Match!"
+}
+
+#Check to make sure Sonde ID in well log and Serial Number in files match--------------------------------------
+fun<-function(n){
+  #Read data
+  temp<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
+  
+  #extract serial number
+  serial_number<-colnames(temp)[grep("LGR",colnames(temp))][1]  #Find collumn name with serial number
+  serial_number<-substr(serial_number,   #isolate serial number
+                        gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
+                        nchar(serial_number)-1) #stop
+  serial_number<-as.numeric(serial_number) 
+  
+  #export serial number
+  serial_number
+}
+#Create list of files 
+logs<-list.files(paste0(working_dir,"export"))
+a<-sapply(seq(1,length(logs)), fun)  
+b<-master$Sonde_ID  
+if(length(a[!(a %in% b)])!=0){
+  warning(paste0("Sonde serial number in Well Log and data files do not match!!"))
+  print(a[!(a %in% b)])
+}else{
+  "Serial Numbers Match"
+}
+
+#Check units in files------------------------------------------------------------------------------------------
+#Create functoin to check units in file
+fun<-function(n){
+  #Donwload data
+  temp<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
+  
+  #Check pressure units
+  press_units<-colnames(temp)[grep("kPa",colnames(temp))][1] 
+  press_units<-substr(press_units,   #isolate temperature units
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+10, #Start
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+12) #stop
+
+  #Check temp units
+  temp_units<-colnames(temp)[grep("Temp",colnames(temp))][1] 
+  temp_units<-substr(temp_units,   #isolate temperature units
+                     gregexpr("Temp", temp_units)[[1]][1]+7, #Start
+                     gregexpr("Temp", temp_units)[[1]][1]+7) #stop
+  
+  #Print units
+  data.frame(filename=logs[n], 
+             pressure=press_units, 
+             temperature=temp_units)
+}
+x<-lapply(seq(1, length(logs)), fun)
+x<-data.frame(do.call(rbind,x))
+print(x)
 ```
 
 ```{r pt-data-wrangling,echo=F}
 #create function to download logs, clean, and rewrite in temp folder
 fun<-function(n){
+  #Setup~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Read data
   temp<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
   
-  #Determine serial number
+  #Define serial number
   serial_number<-colnames(temp)[grep("LGR",colnames(temp))][1]  #Find collumn name with serial number
   serial_number<-substr(serial_number,   #isolate serial number
                         gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
                         nchar(serial_number)-1) #stop
-  serial_number<-as.numeric(serial_number) #return numeric data type
+  serial_number<-as.numeric(serial_number) 
+  
+  #Define variables from well log
+  site_name<-master$Site_Name[master$Sonde_ID==serial_number]
+  deploymetn<-as.POSIXct(master$Date[master$Sonde_ID==serial_number])
+  
+  
   
   #Determine timezone offset in seconds
   time_offset<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
   time_offset<-as.numeric(substr(time_offset, 16,18))*3600+as.numeric(substr(time_offset, 19,20))*60
   
-  #determine pressure and temp units. If wrong, throw error [for now...]
-  press_units<-colnames(temp)[grep("kPa",colnames(temp))][1] 
-  press_units<-substr(press_units,   #isolate temperature units
-                     gregexpr("Abs.Pres", press_units)[[1]][1]+10, #Start
-                     gregexpr("Abs.Pres", press_units)[[1]][1]+12) #stop
-  if(press_units!="kPa"){
-    warning(paste0("Pressure units are incorrect for PT: ",serial_number," (", logs[n],")"), immediate.=T)
-    stop()
-  }
-  temp_units<-colnames(temp)[grep("Temp",colnames(temp))][1] 
-  temp_units<-substr(temp_units,   #isolate temperature units
-                     gregexpr("Temp", temp_units)[[1]][1]+7, #Start
-                     gregexpr("Temp", temp_units)[[1]][1]+7) #stop
-  if(temp_units!="C"){
-    warning(paste0("Temperature units are incorrect for PT: ",serial_number," (", logs[n],")"), immediate.=T)
-    stop()
-  }
-  
   #create temp collumn [for now this is static, we may need to use collumn search similar to above..]
   temp<-temp[,c(2,3,4)]
-  colnames(temp)<-c("DateTime_GMT", "abs_pres_kPa", "temp_c")
+  colnames(temp)<-c("Timestamp", "abs_pres_kPa", "temp_c")
   
   #format date_time
-  temp$DateTime_GMT<-strptime(temp$DateTime_GMT, "%m/%d/%y %I:%M:%S %p")-time_offset
-  temp$DateTime_GMT<-format.Date(temp$DateTime_GMT, "%m/%d/%Y %H:%M:%S")
-  
-  #Check for existing files
-  if(file.exists(paste0(working_dir,"temp/",serial_number,"_initial",".csv"))==TRUE){
-    warning(paste0("Multiple files exists for ",serial_number," : ", logs[n]), immediate.=T)
-    stop()
-  }
-  
-  #Export csv file
-  write.csv(temp, paste0(working_dir,"temp/",serial_number,"_initial",".csv"))
-  
-  #exprort serial number for completion check
-  c(serial_number, 1)
+  temp$Timestamp<-strptime(temp$Timestamp, "%m/%d/%y %I:%M:%S %p")-time_offset
+  temp$Timestamp<-format.Date(temp$Timestamp, "%m/%d/%Y %H:%M:%S")
+
 }
 
 #Create list of PT files
@@ -229,7 +282,6 @@ master<-left_join(master, output, by="Sonde_ID")
 ```
 
 
-
 ```{r db-upload, echo=F}
 #Create function to upload relevant data into database
 fun<-function(n){
@@ -281,8 +333,6 @@ logs<-logs[grep("_waterlevel",logs)]
 
 #Run function 
 output<-lapply(seq(1, length(logs)), fun)
-
-
 ```
 
 
