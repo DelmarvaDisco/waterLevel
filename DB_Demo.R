@@ -9,7 +9,7 @@
 #Step 1: Setup workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ############################################################################
 #Define working dir
-working_dir<-"~"
+working_dir<-getwd()
 
 #Download rodm2 package (note, this may take a few minutes!)
 library(devtools)
@@ -21,12 +21,12 @@ db <- create_sqlite(dir = working_dir,
                     filename="test",
                     connect = F)
 db_loc<-"~/test.sqlite"
-
+db_loc <- file.path(working_dir, "test.sqlite")
 ############################################################################
 #Step 2: Describe tables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ############################################################################
 #Connect to database
-db<-dbConnect(RSQLite::SQLite(), paste0(db_loc))
+db<-DBI::dbConnect(RSQLite::SQLite(), paste0(db_loc))
 
 #Describe Equipment
 db_describe_equipment(db, 
@@ -53,8 +53,7 @@ db_describe_method(db,
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
                      variablecode   = "water_depth_m",
-                     variablenamecv = "waterDepth")
-
+                     variablenamecv = "Water depth")
 #Disconnect from database
 RSQLite::dbDisconnect(db)
 
@@ -68,10 +67,10 @@ db<-dbConnect(RSQLite::SQLite(), paste0(db_loc))
 df<-data.frame(Timestamp = seq(ISOdate(2018,1,1), by="day", length.out = 365), 
                water_depth_m = rgamma(365, 0.1))
 df$Timestamp<-as.POSIXct(df$Timestamp)
-df<-as_tibble(df)
+# df<-as_tibble(df)
 
 #Create variable list
-vars_list<-list("water_level_m")
+vars_list<-list("Water depth" = list(column = "water_depth_m", units = "Meter"))
 
 #Insert data into database
 db_insert_results_ts(db = db, # database connecton
@@ -79,9 +78,9 @@ db_insert_results_ts(db = db, # database connecton
                      method = "PT Data Download", 
                      site_code = "QB Wetland Well Shallow", 
                      variables = vars_list, 
-                     sampledmedium = "Water", 
-                     actionby = "Margaret",
-                     equipment_name = "123456789" # optional
+                     sampledmedium = "Water"
+                     # actionby = "Margaret", PersonLastName = "Palmer"
+                     # equipment_name = "123456789" # optional
 )
 
 #Disconnect from database
