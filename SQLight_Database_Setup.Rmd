@@ -25,7 +25,7 @@ devtools::install_github("khondula/rodm2")
 library(rodm2)
 library(RSQLite)
 library(DBI)
-load("~/db_get_water_level_ts.R")
+source("db_get_water_level_ts.R")
 
 #Create SQLight databse (only do this once)
 db <- create_sqlite(dir = working_dir, connect = T)
@@ -77,7 +77,7 @@ lapply(seq(1, length(sites[,1])), fun)
 ```
 
 ##2.3 Describe Method
-Use the [db_describe_method](https://khondula.github.io/rodm2/reference/db_describe_method.html) function to describe pressure transducer deployment method. Note, we are using the "[Instrument deployment](http://vocabulary.odm2.org/methodtype/InstrumentDeployment/)" method from the controlled vocabulary. Atleast inititially, this is required for use with the rodm2 package.  
+Use the [db_describe_method](https://khondula.github.io/rodm2/reference/db_describe_method.html) function to describe pressure transducer deployment method. Note, we are using the "[Instrument deployment](http://vocabulary.odm2.org/methodtype/InstrumentDeployment/)" method from the controlled vocabulary. Atleast inititially, this makes life easier interfacing with the structure of rodm2. 
 
 ```{r method-table, warning = FALSE, message = FALSE, results='hide'}
 #Create wrapper function for the db_describe_equipment
@@ -128,7 +128,7 @@ db_describe_variable(db,
                      variablenamecv = "waterDepth")
 ```
 
-#Set 3: Go collect data!
+#Step 3: Go collect data!
 Now that the database is setup, go collect you some emperical data!!!!
 
 Note, there are upcoming worksheets that describe how to insert data into the database. 

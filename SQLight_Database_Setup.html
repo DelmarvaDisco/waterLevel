@@ -236,12 +236,12 @@ working_dir&lt;-&quot;//nfs/palmer-group-data/Choptank/Nate/PT_Data/&quot;
 library(devtools)
 devtools::install_github(&quot;khondula/rodm2&quot;)
 library(rodm2)
+library(RSQLite)
+library(DBI)
+source(&quot;db_get_water_level_ts.R&quot;)
 
 #Create SQLight databse (only do this once)
-db &lt;- create_sqlite(dir = working_dir, connect = T)
-
-#Connect to databse
-#db&lt;-dbConnect(RSQLite::SQLite(), paste0(working_dir,&quot;odm2.sqlite&quot;))</code></pre>
+db &lt;- create_sqlite(dir = working_dir, connect = T)</code></pre>
 </div>
 <div id="step-2-configure-database-for-our-study-sites" class="section level1">
 <h1>Step 2: Configure database for our study sites</h1>
@@ -287,7 +287,7 @@ lapply(seq(1, length(sites[,1])), fun)</code></pre>
 </div>
 <div id="describe-method" class="section level2">
 <h2>2.3 Describe Method</h2>
-<p>Use the <a href="https://khondula.github.io/rodm2/reference/db_describe_method.html">db_describe_method</a> function to describe pressure transducer deployment method. Note, we are using the “<a href="http://vocabulary.odm2.org/methodtype/dataRetrieval/">dataRetrieval</a>” method from the controlled vocabulary.</p>
+<p>Use the <a href="https://khondula.github.io/rodm2/reference/db_describe_method.html">db_describe_method</a> function to describe pressure transducer deployment method. Note, we are using the “<a href="http://vocabulary.odm2.org/methodtype/InstrumentDeployment/">Instrument deployment</a>” method from the controlled vocabulary. Atleast inititially, this makes life easier interfacing with the structure of rodm2.</p>
 <pre class="r"><code>#Create wrapper function for the db_describe_equipment
 db_describe_method(db, 
                    methodname = &quot;PT Data Download&quot;,
@@ -334,8 +334,8 @@ db_describe_variable(db,
                      variablenamecv = &quot;waterDepth&quot;)</code></pre>
 </div>
 </div>
-<div id="set-3-go-collect-data" class="section level1">
-<h1>Set 3: Go collect data!</h1>
+<div id="step-3-go-collect-data" class="section level1">
+<h1>Step 3: Go collect data!</h1>
 <p>Now that the database is setup, go collect you some emperical data!!!!</p>
 <p>Note, there are upcoming worksheets that describe how to insert data into the database.</p>
 <pre class="r"><code>#Disconnect from the database
