@@ -53,7 +53,7 @@ db_describe_method(db,
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
                      variablecode   = "water_depth_m",
-                     variablenamecv = "Water depth")
+                     variablenamecv = "waterDepth")
 #Disconnect from database
 RSQLite::dbDisconnect(db)
 
@@ -61,26 +61,39 @@ RSQLite::dbDisconnect(db)
 #Step 3: Insert Data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ############################################################################
 #Connect to database
-db<-dbConnect(RSQLite::SQLite(), paste0(db_loc))
+db<-DBI::dbConnect(RSQLite::SQLite(), paste0(db_loc))
 
 #Create ts data
-df<-data.frame(Timestamp = seq(ISOdate(2018,1,1), by="day", length.out = 365), 
+df1<-data.frame(Timestamp = seq(ISOdate(2018,1,1), by="day", length.out = 365), 
                water_depth_m = rgamma(365, 0.1))
-df$Timestamp<-as.POSIXct(df$Timestamp)
-# df<-as_tibble(df)
+df1$Timestamp<-as.POSIXct(df$Timestamp)
+df2<-data.frame(Timestamp = seq(ISOdate(2019,1,1), by="day", length.out = 365), 
+                water_depth_m = rgamma(365, 0.1))
+df2$Timestamp<-as.POSIXct(df$Timestamp)
 
 #Create variable list
-vars_list<-list("Water depth" = list(column = "water_depth_m", units = "Meter"))
+vars_list<-list("waterDepth" = list(column = "water_depth_m", units = "Meter"))
 
 #Insert data into database
 db_insert_results_ts(db = db, # database connecton
-                     datavalues = df, # data frame of time series data
+                     datavalues = df1, # data frame of time series data
                      method = "PT Data Download", 
                      site_code = "QB Wetland Well Shallow", 
                      variables = vars_list, 
                      sampledmedium = "Water"
-                     # actionby = "Margaret", PersonLastName = "Palmer"
-                     # equipment_name = "123456789" # optional
+                     #actionby = "Margaret", PersonLastName = "Palmer",
+                     #equipment_name = "123456789" # optional
+)
+
+#Insert data into database
+db_insert_results_ts(db = db, # database connecton
+                     datavalues = df2, # data frame of time series data
+                     method = "PT Data Download", 
+                     site_code = "QB Wetland Well Shallow", 
+                     variables = vars_list, 
+                     sampledmedium = "Water"
+                     #actionby = "Margaret", PersonLastName = "Palmer",
+                     #equipment_name = "123456789" # optional
 )
 
 #Disconnect from database
@@ -90,7 +103,46 @@ RSQLite::dbDisconnect(db)
 #Step 4: View Data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ############################################################################
 #Connect to database
-db<-dbConnect(RSQLite::SQLite(), paste0(db_loc))
+db<-DBI::dbConnect(RSQLite::SQLite(), paste0(db_loc))
 
-#View Values
-dbReadTable(db,"timeseriesresultvalues")
+#Create db_get_ts_function
+db_get_water_level_ts_function<-function(site_code){
+  
+  #Retreive Sampling Feature ID for site code
+  SamplingFeatureID<-RSQLite::dbGetQuery(db,
+                                        "SELECT SamplingFeatureID FROM SamplingFeatures WHERE SamplingFeatureCode = :x", 
+                                        params=list(x=site_code))
+  
+  #Retreive Feature Action ID[s] for site code
+  FeatureActionID<-RSQLite::dbGetQuery(db,
+                                       "SELECT FeatureActionID FROM FeatureActions WHERE SamplingFeatureID = :x", 
+                                         params=list(x=SamplingFeatureID[,1]))
+  
+  #Retreive Result ID[s] for each feature action
+  ResultID<-RSQLite::dbGetQuery(db,
+                                  "SELECT ResultID FROM Results WHERE FeatureActionID = :x", 
+                                   params=list(x=FeatureActionID[,1]))
+  
+  #Retreive Result values
+  Values<-RSQLite::dbGetQuery(db,
+                                 "SELECT ValueDateTime, DataValue
+                                    FROM TimeSeriesResultValues
+                                    WHERE ResultID = :x", 
+                                  params=list(x=ResultID[,1]))
+  
+  #Clean up values df
+  Values$ValueDateTime<-as.POSIXct(Values$ValueDateTime)
+  colnames(Values)<-c("Timestamp", "water_level_m")
+  
+  #Export Values
+  Values
+}
+
+#Retreive Water Level Data from Database
+wl<-db_get_water_level_ts_function("QB Wetland Well Shallow")
+
+#Plot
+plot(wl)
+
+#Disconnect from database
+RSQLite::dbDisconnect(db)
