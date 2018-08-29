@@ -8,6 +8,9 @@
 ############################################################################
 #Step 1: Setup workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ############################################################################
+#Clear memory
+rm(list=ls(all=TRUE))
+
 #Define working dir
 working_dir<-getwd()
 
@@ -67,10 +70,10 @@ db<-DBI::dbConnect(RSQLite::SQLite(), paste0(db_loc))
 #Create ts data
 df1<-data.frame(Timestamp = seq(ISOdate(2018,1,1), by="day", length.out = 365), 
                water_depth_m = rgamma(365, 0.1))
-df1$Timestamp<-as.POSIXct(df$Timestamp)
+df1$Timestamp<-as.POSIXct(df1$Timestamp)
 df2<-data.frame(Timestamp = seq(ISOdate(2019,1,1), by="day", length.out = 365), 
                 water_depth_m = rgamma(365, 0.1))
-df2$Timestamp<-as.POSIXct(df$Timestamp)
+df2$Timestamp<-as.POSIXct(df2$Timestamp)
 
 #Create variable list
 vars_list<-list("waterDepth" = list(column = "water_depth_m", units = "Meter"))
@@ -81,9 +84,9 @@ db_insert_results_ts(db = db, # database connecton
                      method = "PT Data Download", 
                      site_code = "QB Wetland Well Shallow", 
                      variables = vars_list, 
-                     sampledmedium = "Water"
-                     #actionby = "Margaret", PersonLastName = "Palmer",
-                     #equipment_name = "123456789" # optional
+                     sampledmedium = "Water",
+                     actionby = "Margaret", 
+                     equipment_name = 123456789 # optional
 )
 
 #Insert data into database
@@ -92,9 +95,9 @@ db_insert_results_ts(db = db, # database connecton
                      method = "PT Data Download", 
                      site_code = "QB Wetland Well Shallow", 
                      variables = vars_list, 
-                     sampledmedium = "Water"
-                     #actionby = "Margaret", PersonLastName = "Palmer",
-                     #equipment_name = "123456789" # optional
+                     sampledmedium = "Water",
+                     actionby = "Margaret", 
+                     equipment_name = 123456789 # optional
 )
 
 #Disconnect from database
