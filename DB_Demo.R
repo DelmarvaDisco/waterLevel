@@ -34,7 +34,7 @@ db<-DBI::dbConnect(RSQLite::SQLite(), paste0(db_loc))
 
 #Describe Equipment
 db_describe_equipment(db, 
-                      equip_name    =   123456789, 
+                      equip_name    =   "123456789", 
                       serial_no     =   123456789,
                       model_name    =   "U20 Pressure Transducer",
                       vendor        =   "Onset",
@@ -86,7 +86,7 @@ db_insert_results_ts(db = db, # database connecton
                      variables = vars_list, 
                      sampledmedium = "Water",
                      actionby = "Margaret", 
-                     equipment_name = 123456789 # optional
+                     equipment_name = "123456789" # optional
 )
 
 #Insert data into database
@@ -97,7 +97,7 @@ db_insert_results_ts(db = db, # database connecton
                      variables = vars_list, 
                      sampledmedium = "Water",
                      actionby = "Margaret", 
-                     equipment_name = 123456789 # optional
+                     equipment_name = "123456789" # optional
 )
 
 #Disconnect from database
