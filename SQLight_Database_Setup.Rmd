@@ -45,7 +45,7 @@ equipment
 ```{r equipment-describe, warning = FALSE, message = FALSE, results='hide'}
 #Create wrapper function for the db_describe_equipment
 fun<-function(n){db_describe_equipment(db, 
-                    equip_name    =   equipment$serial_no[n], 
+                    equip_name    =   as.character(equipment$serial_no[n]), 
                     serial_no     =   equipment$serial_no[n],
                     model_name    =   "U20 Pressure Transducer",
                     vendor        =   "Onset",
@@ -94,38 +94,38 @@ Use the [db_describe_variable](https://khondula.github.io/rodm2/reference/db_des
 #Barometric Pressure (from baro logger)
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
-                     variablecode   = "atm_pres_kPa",
+                     variablecode   = "barometricPressure",
                      variablenamecv = "barometricPressure")
 
 #Absolute Pressure
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
-                     variablecode   = "abs_pres_kPa",
+                     variablecode   = "pressureAbsolute",
                      variablenamecv = "pressureAbsolute")
 
 #Gage Pressure
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
-                     variablecode   = "gage_pres_kPa",
+                     variablecode   = "pressureGauge",
                      variablenamecv = "pressureGauge")
 
 #Water Collumn Depth 
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
-                     variablecode   = "water_level_m",
-                     variablenamecv = "waterColumnEquivalentHeightBarometric")
+                     variablecode   = "gageHeight",
+                     variablenamecv = "gageHeight")
 
 #Offset (to correct water level to water depth)
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
-                     variablecode   = "offset_m",
+                     variablecode   = "offset",
                      variablenamecv = "offset")
 
 #Water Depth (ground surface = 0, positive values indicate inundation)
 db_describe_variable(db, 
                      variabletypecv = "Hydrology",
-                     variablecode   = "water_depth_m",
-                     variablenamecv = "waterDepth")
+                     variablecode   = "waterLevel",
+                     variablenamecv = "waterLevel")
 ```
 
 #Step 3: Go collect data!
