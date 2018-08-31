@@ -1,32 +1,67 @@
 #Create db_get_ts_function
-db_get_water_level_ts<-function(site_code){
+db_get_water_level_ts<-function(db, site_code){
   
-  #Retreive Sampling Feature ID for site code
-  SamplingFeatureID<-RSQLite::dbGetQuery(db,
-                                         "SELECT SamplingFeatureID FROM SamplingFeatures WHERE SamplingFeatureCode = :x", 
-                                         params=list(x=site_code))
-  if(nrow(SamplingFeatureID)>0){ 
-    #Retreive Feature Action ID[s] for site code
-    FeatureActionID<-RSQLite::dbGetQuery(db,
-                                         "SELECT FeatureActionID FROM FeatureActions WHERE SamplingFeatureID = :x", 
-                                         params=list(x=SamplingFeatureID[,1]))
-    if(nrow(FeatureActionID)>0){
+  #Check if db is compatable
+  if (!class(db) %in% c("SQLiteConnection", "PostgreSQLConnection")) {
+    stop("sorry, only sqlite and postgresql database connections are supported so far")}
+  
+  #SQLite Database 
+  if(class(db) == "SQLiteConnection"){
+  
+      #Retreive Sampling Feature ID for site code
+      SamplingFeatureID<-RSQLite::dbGetQuery(db,
+                                             "SELECT SamplingFeatureID FROM SamplingFeatures WHERE SamplingFeatureCode = :x", 
+                                             params=list(x=site_code))
+     
+      #Retreive Feature Action ID[s] for site code
+      FeatureActionID<-RSQLite::dbGetQuery(db,
+                                           "SELECT FeatureActionID FROM FeatureActions WHERE SamplingFeatureID = :x", 
+                                           params=list(x=SamplingFeatureID[,1]))
+     
       #Retreive Result ID[s] for each feature action
       ResultID<-RSQLite::dbGetQuery(db,
                                     "SELECT ResultID FROM Results WHERE FeatureActionID = :x", 
                                     params=list(x=FeatureActionID[,1]))
-      if(nrow(ResultID)>0){
-        #Retreive Result values
-        Values<-RSQLite::dbGetQuery(db,
-                                    "SELECT ValueDateTime, DataValue
-                                          FROM TimeSeriesResultValues
-                                          WHERE ResultID = :x", 
-                                    params=list(x=ResultID[,1]))
-        
-        #Clean up values df
-        Values$ValueDateTime<-as.POSIXct(Values$ValueDateTime)
-        colnames(Values)<-c("Timestamp", "water_level_m")
-        
-        #Export Values
-        Values}}}
+    
+      #Retreive Result values
+      Values<-RSQLite::dbGetQuery(db,
+                                  "SELECT ValueDateTime, DataValue
+                                        FROM TimeSeriesResultValues
+                                        WHERE ResultID = :x", 
+                                  params=list(x=ResultID[,1]))
+      
+      #Clean up values df
+      Values$ValueDateTime<-as.POSIXct(Values$ValueDateTime)
+      colnames(Values)<-c("Timestamp", "waterLevel")
+      
+      #Export Values
+      Values
+  }
+  
+  if(class(db) == "PostgreSQLConnection"){
+    
+  Values<-RPostgreSQL::dbGetQuery(db,
+                    "SELECT datavalue, valuedatetime, res.resultid, var.variablecode, sf.samplingfeaturecode, ppl.personfirstname
+                    FROM odm2.timeseriesresultvalues AS tsrv
+                    INNER JOIN odm2.results AS res ON res.resultid = tsrv.resultid
+                    INNER JOIN odm2.variables AS var ON var.variableid = res.variableid
+                    INNER JOIN odm2.units AS u ON u.unitsid = res.unitsid
+                    INNER JOIN odm2.featureactions AS fa ON fa.featureactionid = res.featureactionid
+                    INNER JOIN odm2.samplingfeatures AS sf ON sf.samplingfeatureid = fa.samplingfeatureid
+                    INNER JOIN odm2.actions AS act ON act.actionid = fa.actionid
+                    LEFT JOIN odm2.actionby AS ab ON ab.actionid = act.actionid
+                    LEFT JOIN odm2.affiliations AS aff ON aff.affiliationid = ab.affiliationid
+                    LEFT JOIN odm2.people AS ppl ON ppl.personid = aff.personid
+                    WHERE var.variablecode = 'waterLevel'")
+    
+    #Clean up values df
+    if(length(Values)!=0){
+    Values<-Values[,c("valuedatetime","datavalue")]
+    Values$valuedatetime <-as.POSIXct(Values$valuedatetime)
+    colnames(Values)<-c("Timestamp", "waterLevel")
+    }
+  
+    #Export Values
+    Values
+  }
 }
