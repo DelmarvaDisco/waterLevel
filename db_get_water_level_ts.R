@@ -41,18 +41,19 @@ db_get_water_level_ts<-function(db, site_code){
   if(class(db) == "PostgreSQLConnection"){
     
   Values<-RPostgreSQL::dbGetQuery(db,
-                    "SELECT datavalue, valuedatetime, res.resultid, var.variablecode, sf.samplingfeaturecode, ppl.personfirstname
-                    FROM odm2.timeseriesresultvalues AS tsrv
-                    INNER JOIN odm2.results AS res ON res.resultid = tsrv.resultid
-                    INNER JOIN odm2.variables AS var ON var.variableid = res.variableid
-                    INNER JOIN odm2.units AS u ON u.unitsid = res.unitsid
-                    INNER JOIN odm2.featureactions AS fa ON fa.featureactionid = res.featureactionid
-                    INNER JOIN odm2.samplingfeatures AS sf ON sf.samplingfeatureid = fa.samplingfeatureid
-                    INNER JOIN odm2.actions AS act ON act.actionid = fa.actionid
-                    LEFT JOIN odm2.actionby AS ab ON ab.actionid = act.actionid
-                    LEFT JOIN odm2.affiliations AS aff ON aff.affiliationid = ab.affiliationid
-                    LEFT JOIN odm2.people AS ppl ON ppl.personid = aff.personid
-                    WHERE var.variablecode = 'waterLevel'")
+                    paste0("SELECT datavalue, valuedatetime, res.resultid, var.variablecode, sf.samplingfeaturecode, ppl.personfirstname
+                            FROM odm2.timeseriesresultvalues AS tsrv
+                            INNER JOIN odm2.results AS res ON res.resultid = tsrv.resultid
+                            INNER JOIN odm2.variables AS var ON var.variableid = res.variableid
+                            INNER JOIN odm2.units AS u ON u.unitsid = res.unitsid
+                            INNER JOIN odm2.featureactions AS fa ON fa.featureactionid = res.featureactionid
+                            INNER JOIN odm2.samplingfeatures AS sf ON sf.samplingfeatureid = fa.samplingfeatureid
+                            INNER JOIN odm2.actions AS act ON act.actionid = fa.actionid
+                            LEFT JOIN odm2.actionby AS ab ON ab.actionid = act.actionid
+                            LEFT JOIN odm2.affiliations AS aff ON aff.affiliationid = ab.affiliationid
+                            LEFT JOIN odm2.people AS ppl ON ppl.personid = aff.personid
+                            WHERE var.variablecode = 'waterLevel' AND sf.samplingfeaturecode = '",
+                           site_code,"'"))
     
     #Clean up values df
     if(length(Values)!=0){

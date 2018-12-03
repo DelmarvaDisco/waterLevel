@@ -1,0 +1,321 @@
+---
+title: "4/9/18 Data Download & Processing"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+---
+
+#Notes and Setup
+
+This is an initial attemmt at compiling the data.  Future work includes:
+1.  Developing more rigorous QAQC procedures
+2.  Implimenting said procedures
+3.  Increasing the spead of the database upload...[right now it took over 7.5 hours!]
+
+
+```{r setup, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
+#Clear Memory
+rm(list=ls(all=TRUE))
+
+#Load Required Packages
+library(dplyr)   
+library(devtools)
+library(RSQLite)
+library(DBI)
+library(xts)
+library(dygraphs)
+library(RPostgreSQL)
+
+#Load Palmer Lab tools
+source("~/pressure_transducers/db_get_water_level_ts.R")
+devtools::install_github(repo="rodm2",username="khondula", quiet = F)
+library(rodm2)
+
+#Define working directory and database location
+working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/20180409_Downloads/"
+
+#Download Data
+master<-read.csv(paste0(working_dir,"well_log.csv"))
+
+#Create temp file
+dir.create(paste0(working_dir,"intermediate"))
+
+#Connect to database
+db <- dbConnect(PostgreSQL(), 
+                host     = "sesync-postgis01.research.sesync.org",
+                dbname   = "choptank",
+                user     = "palmergroup", 
+                password = readline(prompt="Enter password: "))
+```
+
+```{r initial-checks, echo=FALSE, results="hide"}
+#Check to make sure site names are in DB-----------------------------------------------------------------------
+a<-as.matrix(master[,"Site_Name"], ncol=1)
+b<-get_site_names_like(" ",db)#as.matrix(dbGetQuery(db,"SELECT SamplingFeatureCode FROM SamplingFeatures"))
+if(length(a[!(a %in% b)])!=0){
+  warning(paste0("Site Names in Well Log and Database do not match!!"))
+  print(a[!(a %in% b)])
+}else{
+  "Site Names Match!"
+}
+
+#Check to make sure Sonde ID in well log and Serial Number in files match--------------------------------------
+fun<-function(n){
+  #Read data
+  temp<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
+  
+  #extract serial number
+  serial_number<-colnames(temp)[grep("LGR",colnames(temp))][1]  #Find collumn name with serial number
+  serial_number<-substr(serial_number,   #isolate serial number
+                        gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
+                        nchar(serial_number)-1) #stop
+  serial_number<-as.numeric(serial_number) 
+  
+  #export serial number
+  serial_number
+}
+#Create list of files 
+logs<-list.files(paste0(working_dir,"export"))
+logs<-logs[logs!="baro.csv"]
+a<-sapply(seq(1,length(logs)), fun)  
+b<-master$Sonde_ID  
+if(length(a[!(a %in% b)])!=0){
+  warning(paste0("Sonde serial number in Well Log and data files do not match!!"))
+  print(a[!(a %in% b)])
+}else{
+  "Serial Numbers Match"
+}
+
+#Check units in files------------------------------------------------------------------------------------------
+#Create functoin to check units in file
+fun<-function(n){
+  #Donwload data
+  temp<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
+  
+  #Check pressure units
+  press_units<-colnames(temp)[grep("kPa",colnames(temp))][1] 
+  press_units<-substr(press_units,   #isolate temperature units
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+10, #Start
+                     gregexpr("Abs.Pres", press_units)[[1]][1]+12) #stop
+
+  #Check temp units
+  temp_units<-colnames(temp)[grep("Temp",colnames(temp))][1] 
+  temp_units<-substr(temp_units,   #isolate temperature units
+                     gregexpr("Temp", temp_units)[[1]][1]+7, #Start
+                     gregexpr("Temp", temp_units)[[1]][1]+7) #stop
+  
+  #Print units
+  data.frame(filename=logs[n], 
+             pressure=press_units, 
+             temperature=temp_units)
+}
+x<-lapply(seq(1, length(logs)), fun)
+x<-data.frame(do.call(rbind,x))
+print(x)
+```
+
+```{r pt-data-wrangling, echo=FALSE, results="hide"}
+#create function to download logs, clean, and rewrite in temp folder
+fun<-function(n){
+  #Setup~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #Read data
+  df<-read.csv(paste0(working_dir,"export/", logs[n]), skip=1)
+  
+  #Define serial number
+  serial_number<-colnames(df)[grep("LGR",colnames(df))][1]  #Find collumn name with serial number
+  serial_number<-substr(serial_number,   #isolate serial number
+                        gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
+                        nchar(serial_number)-1) #stop
+  serial_number<-as.numeric(serial_number) 
+  
+  #Determine timezone offset in seconds
+  time_offset<-colnames(df)[grep("GMT",colnames(df))]  #Grab collumn name w/ time offset
+  time_offset<-as.numeric(substr(time_offset, 16,18))*3600+as.numeric(substr(time_offset, 19,20))*60
+  
+  #Define variables from well log
+  site_name<-master$Site_Name[master$Sonde_ID==serial_number]
+  deployment<-strptime(paste(master$Date[master$Sonde_ID==serial_number],
+                             master$Time[master$Sonde_ID==serial_number]), 
+                       format="%m/%d/%Y %H:%M", tz="GMT")
+  deployment<-deployment-time_offset
+  relative_wl<-master$Relative_Water_Level_m[master$Sonde_ID==serial_number]
+    if(is.na(relative_wl)==T || length(relative_wl)==0){relative_wl<-0}
+  baro_file<-master$baro_file[master$Sonde_ID==serial_number]
+  
+  #water level time sereis~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #subset dataframe to temp, abs_pres, and temp
+  df<-df[,c(2,3,4)]
+  colnames(df)<-c("Timestamp", "pressureAbsolute", "temp_c")
+  
+  #format date_time
+  df$Timestamp<-strptime(df$Timestamp, "%m/%d/%y %I:%M:%S %p")-time_offset
+  df$Timestamp<-as.POSIXct(df$Timestamp)
+  
+  #baro file time series~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #Subset dataframe to temp, abs_pres, and temp
+  baro<-read.csv(paste0(working_dir,"export/", baro_file), skip=1)
+  baro<-baro[,c(2,3,4)]
+  colnames(baro)<-c("Timestamp", "barometricPressure", "temp_c")
+  baro<-na.omit(baro)
+  
+  #format date and time
+  baro$Timestamp<-strptime(baro$Timestamp, "%m/%d/%y %I:%M:%S %p")-time_offset
+  baro$Timestamp<-as.POSIXct(baro$Timestamp)
+  
+  #Cacluculate waterlevel~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #create baro interpolation function
+  baro_fun<-approxfun(baro$Timestamp, baro$barometricPressure)
+  
+  #calculate baro for each df time step
+  df$barometricPressure<-baro_fun(df$Timestamp)
+  
+  #Cacluate gage pressure
+  df$pressureGauge<-df$pressureAbsolute-df$barometricPressure
+  
+  #Calculate relative water level
+  df$gageHeight<-df$pressureGauge/9.81
+  
+  #Water Level
+  df$waterLevel<-df$gageHeight+relative_wl
+  
+  #Prune water level based on deployment time
+  df<-df[df$Timestamp<deployment,]
+  df<-na.omit(df)
+  
+  #add "offset collumn"
+  df$offset<-0
+  
+  #delete potential duplicates
+  df<-df[!duplicated(df),]
+  
+  #Write df to temp file
+  write.csv(df, paste0(working_dir,"intermediate/", serial_number,".csv"))
+}
+
+#Create list of PT files
+logs<-list.files(paste0(working_dir,"export"))
+logs<-logs[logs!="baro.csv"]
+
+#create temp file to store intermediate files
+dir.create(paste0(working_dir,"intermediate"))
+
+#Run function 
+lapply(seq(1, length(logs)), fun)
+```
+
+#Water Level QAQC
+```{r ts_plot function, echo=FALSE, results="hide"}
+fun<-function(n){
+  #Read df
+  df<-read.csv(paste0(working_dir, "intermediate/",master$Sonde_ID[n],".csv"))
+  df$Timestamp<-as.POSIXct(df$Timestamp)
+  df$waterLevel<-df$waterLevel*100+1000 
+  
+  #pull water level from database
+  df_historic<-NULL#db_get_water_level_ts(db,paste(master$Site_Name[n]))
+  
+  #Format df
+  if(length(df_historic)==0){
+    df <- df %>% select(Timestamp, waterLevel)
+    df_xts<-xts(df, order.by=df$Timestamp)
+    df_xts<-df_xts[,-1]
+  }else{
+    #add datum correction to df_historic
+    df <- df %>% select(Timestamp, waterLevel)
+    df_historic$waterLevel<-df_historic$waterLevel*100+1000  
+    df_historic<-df_historic[,c("Timestamp","waterLevel")]
+    df_historic$group<-"old"
+    df$group<-"new"
+    df<-rbind(df_historic, df)
+    df_spread <- df %>% 
+       dplyr::select(Timestamp, group, waterLevel) %>%
+       tidyr::spread(key = group, value = waterLevel)
+    df_xts<-xts(df_spread, order.by=df_spread$Timestamp)
+    df_xts<-df_xts[,-1]
+    }
+  
+  #Plot
+  ts_plot<-dygraph(df_xts, main=master$Site_Name[n]) %>%
+              dyRangeSelector() %>%
+              dyLegend() %>%
+              dyOptions(strokeWidth = 1.5) %>%
+              dyOptions(labelsUTC = TRUE) %>%
+              dyHighlight(highlightCircleSize = 5,
+                              highlightSeriesBackgroundAlpha = 0.2,
+                              hideOnMouseOut = FALSE) %>%
+              dyAxis("y", label = "Water Level [cm]")
+  
+  #Export Plot
+  return(ts_plot)
+}
+```
+
+##Plots
+This is preliminary data and will undergo more rigurous QAQC at a later date. I will go back and plot individually later as part of the QAQC procedure! :) 
+
+```{r, echo=FALSE}
+lapply(seq(1, length(master$Site_Name)), fun)
+```
+
+#Database Import
+```{r database import, echo=FALSE}
+#Create function
+fun<-function(n){
+  #Download intermediate ts data
+  df<-read.csv(paste0(working_dir,"intermediate/", logs[n]))
+  df<-df[,c("Timestamp","waterLevel")]
+  df$Timestamp<-as.POSIXct(df$Timestamp)
+
+  #Sonde ID
+  sn<-as.numeric(substr(logs[n], 1,nchar(logs[n])-4))
+  
+  #Create variable list
+  vars_list<-list(#"pressureAbsolute"    = list(column = "pressureAbsolute",   units = "KPa"),
+                  #"barometricPressure"  = list(column = "barometricPressure", units = "KPa"),
+                  #"pressureGauge"       = list(column = "pressureGauge",      units = "KPa"),
+                  #"gageHeight"          = list(column = "gageHeight",         units = "Meter"),
+                  "Water level"          = list(column = "waterLevel",         units = "Meter"))#,
+                  #"offset"              = list(column = "offset",             units = "Meter"))
+
+  #Insert data into database
+  t0<-Sys.time()
+  db_insert_results_ts(db = db, # database connecton
+                       datavalues = df, # data frame of time series data
+                       method = "PT_Download",
+                       site_code = as.character(master$Site_Name[master$Sonde_ID==sn]),
+                       variables = vars_list,
+                       sampledmedium = "Liquid aqueous",
+                       actionby = "Nate", 
+                       equipment_name = as.character(master$Sonde_ID[master$Sonde_ID==sn]))
+  tf<-Sys.time()
+  tf-t0
+}
+
+#Create list of intermediate files
+logs<-list.files(paste0(working_dir,"intermediate"))
+logs<-logs[logs!=paste0(master$Sonde_ID[master$Site_Name=="Greg Catchment Outlet"],".csv")]
+logs<-logs[logs!=paste0(master$Sonde_ID[master$Site_Name=="Dogbone Catchment Outlet"],".csv")]
+logs<-logs[logs!=paste0(master$Sonde_ID[master$Site_Name=="Solute Catchment Outlet"],".csv")]
+logs<-logs[logs!=paste0(master$Sonde_ID[master$Site_Name=="SR Upland Well 1"],".csv")]
+logs<-logs[logs!=paste0(master$Sonde_ID[master$Site_Name=="SR Upland Well 2"],".csv")]
+logs<-logs[logs!=paste0(master$Sonde_ID[master$Site_Name=="Sears Baro"],".csv")]
+logs<-logs[logs!=paste0(master$Sonde_ID[master$Site_Name=="SN Upland Well 1"],".csv")]
+   
+
+#Run function
+t0<-Sys.time()
+for(i in 1:length(logs)){
+  print(i)
+  fun(i)
+}
+tf<-Sys.time()
+tf-t0
+
+#Disconnect from DB
+dbDisconnect(db)
+```

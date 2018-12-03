@@ -58,6 +58,7 @@ db_describe_variable(db,
                      variabletypecv = "Hydrology",
                      variablecode   = "water_depth_m",
                      variablenamecv = "waterDepth")
+
 #Disconnect from database
 RSQLite::dbDisconnect(db)
 
