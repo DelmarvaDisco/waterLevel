@@ -1,0 +1,171 @@
+---
+title: "Pressure transducer workflow"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+chunk_output_type: console
+---
+  
+```{r}
+devtools::install_github("khondula/rodm2")
+library(rodm2)
+library(readr)
+```
+
+# baro and pt time series
+
+```{r}
+pt <-data.frame(
+  Timestamp = c("2018-06-27 13:45:00", "2018-06-27 13:55:00"),
+  "pressure" = c(10,20),
+  "temp" = c(1, 15))
+
+baro <-data.frame(
+  Timestamp = c("2018-06-27 13:45:00", "2018-06-27 13:55:00"),
+  "pressure" = c(100,200),
+  "temp" = c(10, 150))
+```
+
+# describe barologger and pt methods
+
+```{r}
+db <- rodm2::create_sqlite(connect = TRUE)
+```
+
+```{r}
+db_describe_method(db, 
+                   methodname = "pt", 
+                   methodcode = "pt",
+                   methodtypecv = "Instrument deployment",
+                   methoddescription = "pressure transducer")
+
+db_describe_method(db, 
+                   methodname = "baro", 
+                   methodcode = "baro",
+                   methodtypecv = "Instrument deployment",
+                   methoddescription = "barometric logger")
+```
+
+# insert baro ts
+
+to see the options for sampled medium
+```{r}
+get_cv_terms("medium")
+```
+
+Make sure to use names (`column =` and `units =`) in varables list!
+  
+```{r}
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = baro,
+                            method = "baro",
+                            site_code = "QB",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            # actionby = "Nate",
+                            # equipment_name = "Sensor01",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "Pressure" = list(column = "pressure", units = "Kilopascal"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius"))
+)
+```
+
+
+# insert pt ts
+
+processing level = raw
+method = pt
+
+Make sure to use names (`column =` and `units =`) in vars list!
+  
+```{r}
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = pt,
+                            method = "pt",
+                            site_code = "QB",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous",
+                            # actionby = "Nate",
+                            # equipment_name = "Sensor01",
+                            variables = list( # CV term = list("colname", units = "CV units")
+                              "Pressure" = list(column = "pressure", units = "Kilopascal"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius"))
+)
+```
+
+# query time series
+
+
+```{r}
+dbGetQuery(db, "SELECT * from Results where resulttypecv = 'Time series coverage'")
+dbGetQuery(db, "SELECT * from samplingfeatures")
+dbGetQuery(db, "SELECT * from featureactions")
+```
+
+```{r}
+dbGetQuery(db, "select * from featureactions")
+dbGetQuery(db, "select * from actions") #action begindatetime, enddatetime, actiontypecv
+# methodcode from methods
+# samplingfeature from featureaction
+```
+
+join with variables, units, feature action (site) info
+
+# retrieve time series based on a result ID
+
+Get time series values based on a result ID
+
+```{r}
+# dbListTables(db)
+# dbGetQuery(db, "SELECT * from TimeSeriesResultValues")
+dbGetQuery(db, "SELECT * from TimeSeriesResultValues WHERE ResultID = '1'")
+```
+
+# describe water depth method
+
+only need to to describe function for the first time inserting data of that type 
+
+```{r}
+db_describe_method(db, methodname = "waterdepth", methodcode = "waterdepth",
+                   methodtypecv = "Derivation",
+                   methoddescription = "Calculate water depth from baro and pt")
+```
+
+method = waterdepth
+methodtypecv = derivation
+
+# insert water depth ts
+
+processinglevel = derived
+method = waterdepth
+
+```{r}
+wd <-data.frame(
+  Timestamp = c("2018-06-27 13:45:00", "2018-06-27 13:55:00"),
+  "wd" = c(1,2))
+```
+
+
+```{r}
+library(magrittr)
+db_insert_results_ts(db = db,
+                     datavalues = wd,
+                     method = "waterdepth",
+                     site_code = "QB",
+                     processinglevel = "Derived product",
+                     sampledmedium = "Liquid aqueous",
+                     # actionby = "Nate",
+                     # equipment_name = "Sensor01",
+                     variables = list( # CV term = list("colname", units = "CV units")
+                       "Water depth" = list(column = "wd", units = "Meter")))
+```
+
+Now see time series in database
+
+```{r}
+dbGetQuery(db, "SELECT * from Results WHERE resulttypecv = 'Time series coverage'")
+```
+
+
+
+
