@@ -137,4 +137,3 @@ Note, there are upcoming worksheets that describe how to insert data into the da
 #Disconnect from the database
 RSQLite::dbDisconnect(db)
 ```
-
