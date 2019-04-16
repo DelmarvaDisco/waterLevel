@@ -1,7 +1,7 @@
 ####################################################################################
 # Name: SQLite Database Demo
 # Coder: C. Nathan Jones
-# Date: 31 Jan 2019
+# Date: 15 April 2019
 # Purpose: Demo water level editing workflow with SQLite database and rodm2 schema
 ####################################################################################
 
@@ -18,13 +18,14 @@ source("functions/db_get_ts.R")
 library(RSQLite)
 library(DBI)
 library(rodm2)
+library(lubridate)
 library(tidyverse)
 
 #Define working dir
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data"
 
 #Create SQLight databse (only do this once)
-db <- create_sqlite(dir = working_dir, connect = T)
+db <- create_sqlite(dir = working_dir, filename = "test", connect = T)
 
 ####################################################################################
 # Step 2: Setup Database -----------------------------------------------------------
@@ -124,45 +125,82 @@ data_dir<-paste0(working_dir, "/20171020_Downloads/export/")
 
 #baro data
 baro<-read_csv(paste0(data_dir, "baro.csv"), skip=1) 
-colnames(baro)<-c("row","Timestamp","pressure", "temp", "notes", "notes2")
+colnames(baro)<-c("row","Timestamp","barometricPressure", "temp", "notes", "notes2")
 baro<-baro %>% 
-  dplyr::select(Timestamp, pressure, temp) %>%
-  dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %H:%M:%S %p"))) %>%
-  dplyr::arrange(Timestamp) %>%
-  dplyr::group_by(Timestamp) %>% 
-  dplyr::summarise(pressure=mean(pressure),
-                   temp = mean(temp))
+  dplyr::select(Timestamp, barometricPressure, temp) %>%
+  dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"))) %>%
+  dplyr::arrange(Timestamp) 
 
 #water level data
 level<-read_csv(paste0(data_dir,"Bubbly_Bay_10-20-17.csv"), skip=1)
-colnames(level)<-c("row","Timestamp","pressure", "temp", "notes", "notes2", "notes3", "notes4", "notes5")
+colnames(level)<-c("row","Timestamp","pressureAbsolute", "temp", "notes", "notes2", "notes3", "notes4", "notes5")
 level<-level %>% 
-  dplyr::select(Timestamp, pressure, temp) %>%
-  dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %H:%M:%S %p")))
+  dplyr::select(Timestamp, pressureAbsolute, temp) %>%
+  dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"))) %>%
+  na.omit()
 
 #3.2 Insert raw data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Insert baro
+#Insert atmospheric pressure data
 rodm2::db_insert_results_ts(db = db,
                             datavalues = baro,
                             method = "baro",
-                            site_code = "DB Wetland Well Shallow",
+                            site_code = "BB Wetland Well Shallow",
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
                             #equipment_name = "10808360",
                             variables = list( # variable name CV term = list("colname", units = "CV units")
-                              "Pressure" = list(column = "pressure", units = "Kilopascal"),
+                              "barometricPressure" = list(column = "barometricPressure", units = "Kilopascal"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 
-#insert wL pressure data
+#insert absolute pressure data
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = level,
+                            method = "pt",
+                            site_code = "BB Wetland Well Shallow",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "pressureAbsolute" = list(column = "pressureAbsolute", units = "Kilopascal"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+
+#Estimate water level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #query database for water pressure and baro data
-#calculate water level
-#export to database
-#clean up database above. no need to add everything
-#make sure you can connect/disconnect!
+baro<-db_get_ts(db = db, 
+                site_code = "BB Wetland Well Shallow",
+                variable_code_CV = "barometricPressure",
+                start_datetime = min(level$Timestamp), 
+                end_datetime = max(level$Timestamp)) 
 
+level<-db_get_ts(db = db, 
+                 site_code = "BB Wetland Well Shallow",
+                 variable_code_CV = "pressureAbsolute",
+                 start_datetime = min(level$Timestamp), 
+                 end_datetime = max(level$Timestamp)) 
 
+#Calculate gage height
+baro_fun<-approxfun(baro)  
+level_fun<-approxfun(level)  
+df<-data.frame(Timestamp = seq(ymd_hms(min(level$Timestamp)),ymd_hms(max(level$Timestamp)), by = '15 mins')) 
+df$barometricPressure <- baro_fun(df$Timestamp)
+df$pressureAbsolute   <- level_fun(df$Timestamp)
+df$pressureGauge      <- df$pressureAbsolute - df$barometricPressure
+df$gageHeight<-df$pressureGauge*0.101974 
+df<-na.omit(df)
 
-#RSQLite::dbDisconnect(db)
+#Insert into the database ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#insert absolute pressure data
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = "BB Wetland Well Shallow",
+                            processinglevel = "Derived Data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "pressureGauge" = list(column = "pressureGauge", units = "Kilopascal"),
+                              "gageHeight"    = list(column = "gageHeight",    units = "Meter")))
 
-#db<-RSQLite::dbConnect(RSQLite::SQLite(), paste0(working_dir,"/odm2.sqlite"))

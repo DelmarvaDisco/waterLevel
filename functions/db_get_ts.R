@@ -1,5 +1,7 @@
+#http://odm2.github.io/ODM2/schemas/ODM2_Current/diagrams/ODM2Core.html
+
 #Create db_get_ts_function
-db_get__ts<-function(db, site_code, variable_code_CV, start_datetime, stop_datetime){
+db_get_ts<-function(db, site_code, variable_code_CV, start_datetime, end_datetime){
   
   #Check if db is compatable
   if (!class(db) %in% c("SQLiteConnection")) {
@@ -26,6 +28,7 @@ db_get__ts<-function(db, site_code, variable_code_CV, start_datetime, stop_datet
                                       FROM Variables
                                       WHERE VariableNameCV = :x",
                                     params=list(x=variable_code_CV))
+    VariableID<-data.frame(VariableID=rep(paste(VariableID),nrow(FeatureActionID)))
     
     #Retreive Result ID[s] for each feature action
     ResultID<-RSQLite::dbGetQuery(db,
@@ -63,5 +66,5 @@ db_get__ts<-function(db, site_code, variable_code_CV, start_datetime, stop_datet
     colnames(Values)<-c("Timestamp", variable_code_CV)
     
     #Export Values
-    Values
+    Values %>% arrange(Timestamp)
 }
