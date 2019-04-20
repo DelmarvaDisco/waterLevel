@@ -19,11 +19,15 @@ source("functions/db_get_ts.R")
 library(RSQLite)
 library(DBI)
 library(rodm2)
+library(zoo)
 library(lubridate)
 library(tidyverse)
 
 #Define working dir
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
+
+#Set system time zone 
+Sys.setenv(TZ="America/New_York")
 
 ####################################################################################
 # Step 2: Setup Database -----------------------------------------------------------
@@ -174,10 +178,10 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='files'])
 
 ####################################################################################
-# Step 3: Estimate barometric pressure----------------------------------------------
+# Step 4: Estimate barometric pressure----------------------------------------------
 ####################################################################################
 #Define Baro Loggers
-baro_id<-c("10589038", #JR Baro
+baro_id<-c("10589038",  #JR Baro
            "10808360") #JL Baro
 
 #Define Baro Logger Files
@@ -189,21 +193,35 @@ baro_fun<-function(n){
   #Download data
   temp<-read_csv(paste0(working_dir,baro_files$path[n]), skip=1)
   
-  #Determine timezone offset in seconds
-  time_offset<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
-  time_offset<-substr(time_offset, 
-                      regexpr('GMT', time_offset)[1]+4,
-                      nchar(time_offset)-3)
-  time_offset<-as.numeric(paste(time_offset))*3600
+  #Determine TZ
+  time_zone<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
+  time_zone<-substr(time_zone, 
+                    regexpr('GMT', time_zone)[1],
+                    nchar(time_zone))
+  time_zone<-if_else(time_zone=="GMT-04:00", 
+                     "EST", 
+                     if_else(time_zone=="GMT-05:00", 
+                             "EDT", 
+                             "-9999"))
+  #Determin units
+  units<-colnames(temp)[grep("Abs Pres,",colnames(temp))]
+  units<-substr(units, 
+                regexpr("Abs Pres,", units)+10,
+                regexpr("Abs Pres,", units)+12)
   
   #Organize
   colnames(temp)<-c("ID","Timestamp","barometricPressure", "temp")
   temp<-temp[,c("Timestamp","barometricPressure", "temp")]
   temp<-temp %>% 
+    #Select collumns of interest
     dplyr::select(Timestamp, barometricPressure, temp) %>%
-    dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"))) %>%
-    dplyr::mutate(Timestamp = Timestamp - time_offset) %>%
+    #Convert to POSIX
+    dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"), tz = time_zone)) %>%
+    #Order the intput
     dplyr::arrange(Timestamp) 
+  
+  #Convert from psi to kpa if necessary
+  if(units=="psi"){temp$barometricPressure<-6.89476*temp$barometricPressure}
   
   #Add serial number
   temp$pt_id<-baro_files$pt_id[n]
@@ -250,9 +268,10 @@ remove(list=ls()[ls()!='working_dir' &
                  ls()!='files'])
 
 ####################################################################################
-# Step 4: Insert time series--------------------------------------------------------
+# Step 5: Insert time series--------------------------------------------------------
 ####################################################################################
-#Create well lookup table
+#Create well lookup table~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Create list of files
 wells<-list.files(working_dir, recursive = T)
 wells<-wells[grep(wells,pattern = 'well_log')]
 wells<-wells[-grep(wells,pattern = 'archive')]
@@ -271,11 +290,131 @@ log_fun<-function(n){
 wells<-mclapply(X = seq(1,length(wells)), FUN = log_fun)
 wells<-bind_rows(wells)
 
+#Convert times to GMT
+wells<-wells %>%
+  #Define Timestamp
+  mutate(Timestamp = mdy(Date)) %>%
+  #Convert to POSIXct
+  mutate(Timestamp = as.POSIXct(Date, format = "%m/%d/%Y")) %>%
+  #Add time
+  mutate(Timestamp = Timestamp + Time) %>%
+  #Idenitfy download date
+  mutate(download_date = lubridate::date(Timestamp)) %>%
+  #Select relevant collumsn
+  select(Site_Name, Sonde_ID, Timestamp, download_date, Relative_Water_Level_m)
 
+#Prep files df to join
+files <- files %>%
+  #rename pt_id
+  rename(Sonde_ID = pt_id) %>%
+  #estimate download date
+  mutate(download_date = date(end_date))
+  
+#join to master lookup table!  
+wells<-left_join(wells, files, by = c("download_date" = "download_date", "Sonde_ID" = "Sonde_ID"))
+
+#Create function to download well data by site
+sites<-unique(wells$Site_Name)
+#water_level<-function(n){}
+  #for testing
+  n<-12
+  
+  #Define site
+  well_index<-wells %>% filter(Site_Name==sites[n])
+  well_index<-na.omit()
+  
+  #download absolute pressure data
+  download_fun<-function(m){
+    #Download data
+    temp<-read_csv(paste0(working_dir,well_index$path[m]), skip=1)
+    
+    #Determine timezone offset in seconds
+    time_offset<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
+    time_offset<-substr(time_offset, 
+                        regexpr('GMT', time_offset)[1]+4,
+                        nchar(time_offset)-3)
+    time_offset<-as.numeric(paste(time_offset))*3600
+    
+    #Organize
+    colnames(temp)<-c("ID","Timestamp","pressureAbsolute", "temp")
+    temp<-temp[,c("Timestamp","pressureAbsolute", "temp")]
+    temp<-temp %>% 
+      #Select collumns of interest
+      dplyr::select(Timestamp, pressureAbsolute, temp) %>%
+      #Convert to POSIX
+      dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"))) %>%
+      #Convert to GMT time. Note, this is likely an unnecessary step. However, I'm unclear on how the 
+      #reading and writing to the databse handles time zones [and time zone changes]./
+      dplyr::mutate(Timestamp = Timestamp + time_offset) %>%
+      dplyr::mutate(Timestamp = lubridate::force_tz(Timestamp, "GMT")) %>%
+      #Order the intput
+      dplyr::arrange(Timestamp) 
+    
+    #Add serial number
+    temp$Sonde_ID<-well_index$Sonde_ID[m]
+    
+    #Export temp
+    temp
+  }
+  df<-mclapply(X = seq(1,nrow(well_index)), FUN = download_fun) %>% bind_rows(.) %>% arrange(Timestamp)
+
+  #subract barometric pressure
+  source("functions/db_get_ts.R")
+  baro<-db_get_ts(db, 'BARO', 'barometricPressure', date(min(well_index$start_date)), date(max(well_index$end_date)))
+  baro<-baro %>% mutate(Timestamp=force_tz(Timestamp,"GMT"))
+  baro_fun<-approxfun(baro$Timestamp, baro$barometricPressure)
+  df$barometricPressure<-baro_fun(df$Timestamp)
+  df$pressureGauge<-df$pressureAbsolute-df$barometricPressure
+  
+  #Estimate water collumn height
+  df<-df %>% mutate(waterColumnEquivalentHeightAbsolute = pressureGauge*0.101972) 
+  
+  #Lets remove extraneous points
+  df<-df %>%
+    #Estimate difference
+    mutate(diff = lead(waterColumnEquivalentHeightAbsolute) - waterColumnEquivalentHeightAbsolute) %>%
+    #Identify failure points where signal "drops
+    mutate(diff = if_else(diff> -0.1, 0, 1)) %>%
+    mutate(diff = rollapply(diff, 10, sum, align='right', fill=NA)) %>%
+    filter(diff == 0)
+  
+  plot(df$Timestamp, df$waterColumnEquivalentHeightAbsolute, type="l")
+  
+    
+    
+  
+  
+  
+  
+  
+  
+  
+  
+  #For funzies----------------------
+  #load libraries
+  library(xts)
+  library(dygraphs)
+  
+  #format data
+  df_xts<-df %>% 
+    select(Timestamp, barometricPressure, pressureAbsolute) %>% 
+    mutate(barometricPressure = barometricPressure + 16)
+    na.omit() 
+  df_xts<-xts(df_xts, order.by=df_xts$Timestamp)
+  df_xts<-df_xts[,-1]
+  
+  #Plot
+  dygraph(df_xts) %>%
+    dyRangeSelector() %>%
+    dyLegend() %>%
+    dyOptions(strokeWidth = 1.5) %>%
+    dyOptions(labelsUTC = TRUE) %>%
+    dyHighlight(highlightCircleSize = 5,
+                highlightSeriesBackgroundAlpha = 0.2,
+                hideOnMouseOut = FALSE) %>%
+    dyAxis("y", label = "Water Level [m]")
+  
 #Thnigs to do next --------------
-#Fix Well log collum names
-#Create Date + Time Collumn
-#Convert to GMT
 #Download atmospheric pressure data for each well
 #upload into database for each well
 #Calculate water height

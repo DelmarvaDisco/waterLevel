@@ -166,7 +166,7 @@ rodm2::db_insert_results_ts(db = db,
                               "pressureAbsolute" = list(column = "pressureAbsolute", units = "Kilopascal"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 
-#Estimate water level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate water level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #query database for water pressure and baro data
 baro<-db_get_ts(db = db, 
                 site_code = "BB Wetland Well Shallow",
@@ -190,7 +190,7 @@ df$pressureGauge      <- df$pressureAbsolute - df$barometricPressure
 df$gageHeight<-df$pressureGauge*0.101974 
 df<-na.omit(df)
 
-#Insert into the database ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Insert into the database ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #insert absolute pressure data
 rodm2::db_insert_results_ts(db = db,
                             datavalues = df,
