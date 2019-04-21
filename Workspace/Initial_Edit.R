@@ -137,7 +137,6 @@ files<-files[substr(files,nchar(files)-2,nchar(files))=="csv"]
 files<-files[-grep(files,pattern = 'archive')]
 files<-files[-grep(files,pattern = 'Database Information')]
 files<-files[-grep(files,pattern = 'intermediate')]
-files<-files[-grep(files,pattern = 'spring')]
 files<-files[-grep(files,pattern = 'precip')]
 
 #Create function to retrieve info from each file
@@ -180,6 +179,7 @@ remove(list=ls()[ls()!='working_dir' &
 ####################################################################################
 # Step 4: Estimate barometric pressure----------------------------------------------
 ####################################################################################
+#Gather data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Define Baro Loggers
 baro_id<-c("10589038",  #JR Baro
            "10808360") #JL Baro
@@ -217,6 +217,8 @@ baro_fun<-function(n){
     dplyr::select(Timestamp, barometricPressure, temp) %>%
     #Convert to POSIX
     dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"), tz = time_zone)) %>%
+    #Convert to GMT time
+    dplyr::mutate(Timestamp = with_tz(Timestamp, "GMT")) %>%
     #Order the intput
     dplyr::arrange(Timestamp) 
   
@@ -225,6 +227,9 @@ baro_fun<-function(n){
   
   #Add serial number
   temp$pt_id<-baro_files$pt_id[n]
+  
+  #Add download data
+  temp$download_date<-date(baro_files$end_date[n])
   
   #Export temp
   temp
@@ -236,16 +241,35 @@ baro<-bind_rows(baro)
 
 #Organize barometric pressure
 baro<-baro %>%
-  #remove duplicate records
-  group_by(Timestamp, pt_id) %>%
-  summarise(barometricPressure = mean(barometricPressure), 
-            temp = mean(temp)) %>%
-  #average baro records 
-  group_by(Timestamp) %>%
-  summarise(barometricPressure = mean(barometricPressure), 
-            temp = mean(temp)) %>%
+  #remove duplicate records from same sonde
+  distinct(.) %>%
+  #Remove na's
   na.omit()
 
+#Manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#This file was one day backwards [weird]
+baro$Timestamp<-if_else(baro$download_date=="2018-03-04", 
+                        baro$Timestamp+days(1), 
+                        baro$Timestamp)
+
+#Correct Baro from Greg [seems off, likely a TZ issue]
+baro$Timestamp<-if_else(baro$pt_id=="10808360" & baro$Timestamp<mdy("12/22/2017"),
+                        baro$Timestamp - hours(5), 
+                        baro$Timestamp)
+
+#Correct Sonde again. [Apprarently the computer UTC TZ does not directly apply to sonde tz, its just a label]
+baro$Timestamp<-if_else(baro$pt_id=="10808360" & baro$Timestamp>mdy("12/22/2017"),
+                        baro$Timestamp - hours(6), 
+                        baro$Timestamp)
+
+#Take moving avarege [15 minute]
+baro<-baro %>% 
+  mutate(Timestamp = ceiling_date(Timestamp, "15 min")) %>%
+  group_by(Timestamp) %>%
+  summarise(barometricPressure = mean(barometricPressure, na.rm = T), 
+            temp = mean(temp, na.rm = T))
+
+#DB Upload~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Insert barometric pressure data into db
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -278,10 +302,10 @@ wells<-wells[-grep(wells,pattern = 'archive')]
 
 #Create function to download well log files
 log_fun<-function(n){
-  
+
   #Download well log
   temp<-read_csv(paste0(working_dir,wells[n]))
-  
+
   #export temp
   temp
 }
@@ -295,7 +319,7 @@ wells<-wells %>%
   #Define Timestamp
   mutate(Timestamp = mdy(Date)) %>%
   #Convert to POSIXct
-  mutate(Timestamp = as.POSIXct(Date, format = "%m/%d/%Y")) %>%
+  mutate(Timestamp = as.POSIXct(Date, format = "%m/%d/%Y", tz = "America/New_York")) %>%
   #Add time
   mutate(Timestamp = Timestamp + Time) %>%
   #Idenitfy download date
@@ -309,50 +333,56 @@ files <- files %>%
   rename(Sonde_ID = pt_id) %>%
   #estimate download date
   mutate(download_date = date(end_date))
-  
-#join to master lookup table!  
+
+#join to master lookup table!
 wells<-left_join(wells, files, by = c("download_date" = "download_date", "Sonde_ID" = "Sonde_ID"))
 
 #Create function to download well data by site
 sites<-unique(wells$Site_Name)
 #water_level<-function(n){}
   #for testing
-  n<-12
-  
+  n<-11
+
   #Define site
   well_index<-wells %>% filter(Site_Name==sites[n])
-  well_index<-na.omit()
-  
+
   #download absolute pressure data
   download_fun<-function(m){
     #Download data
     temp<-read_csv(paste0(working_dir,well_index$path[m]), skip=1)
-    
-    #Determine timezone offset in seconds
-    time_offset<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
-    time_offset<-substr(time_offset, 
-                        regexpr('GMT', time_offset)[1]+4,
-                        nchar(time_offset)-3)
-    time_offset<-as.numeric(paste(time_offset))*3600
-    
+
+    #Determine TZ
+    time_zone<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
+    time_zone<-substr(time_zone,
+                      regexpr('GMT', time_zone)[1],
+                      nchar(time_zone))
+    time_zone<-if_else(time_zone=="GMT-04:00",
+                       "EST",
+                       if_else(time_zone=="GMT-05:00",
+                               "EDT",
+                               "-9999"))
+    #Determin units
+    units<-colnames(temp)[grep("Abs Pres,",colnames(temp))]
+    units<-substr(units,
+                  regexpr("Abs Pres,", units)+10,
+                  regexpr("Abs Pres,", units)+12)
+
     #Organize
     colnames(temp)<-c("ID","Timestamp","pressureAbsolute", "temp")
     temp<-temp[,c("Timestamp","pressureAbsolute", "temp")]
-    temp<-temp %>% 
+    temp<-temp %>%
       #Select collumns of interest
       dplyr::select(Timestamp, pressureAbsolute, temp) %>%
       #Convert to POSIX
-      dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"))) %>%
-      #Convert to GMT time. Note, this is likely an unnecessary step. However, I'm unclear on how the 
-      #reading and writing to the databse handles time zones [and time zone changes]./
-      dplyr::mutate(Timestamp = Timestamp + time_offset) %>%
-      dplyr::mutate(Timestamp = lubridate::force_tz(Timestamp, "GMT")) %>%
+      dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"), tz = time_zone))  %>%
+      #Convert to GMT
+      dplyr::mutate(Timestamp = with_tz(Timestamp, "GMT")) %>%
       #Order the intput
-      dplyr::arrange(Timestamp) 
-    
+      dplyr::arrange(Timestamp)
+
     #Add serial number
     temp$Sonde_ID<-well_index$Sonde_ID[m]
-    
+
     #Export temp
     temp
   }
@@ -360,15 +390,19 @@ sites<-unique(wells$Site_Name)
 
   #subract barometric pressure
   source("functions/db_get_ts.R")
-  baro<-db_get_ts(db, 'BARO', 'barometricPressure', date(min(well_index$start_date)), date(max(well_index$end_date)))
+  baro<-db_get_ts(db = db,
+                  site_code='BARO',
+                  variable_code_CV = 'barometricPressure',
+                  start_datetime = date(min(well_index$start_date)),
+                  end_datetime = date(max(well_index$end_date)))
   baro<-baro %>% mutate(Timestamp=force_tz(Timestamp,"GMT"))
   baro_fun<-approxfun(baro$Timestamp, baro$barometricPressure)
   df$barometricPressure<-baro_fun(df$Timestamp)
   df$pressureGauge<-df$pressureAbsolute-df$barometricPressure
-  
+
   #Estimate water collumn height
-  df<-df %>% mutate(waterColumnEquivalentHeightAbsolute = pressureGauge*0.101972) 
-  
+  df<-df %>% mutate(waterColumnEquivalentHeightAbsolute = pressureGauge*0.101972)
+
   #Lets remove extraneous points
   df<-df %>%
     #Estimate difference
@@ -377,19 +411,30 @@ sites<-unique(wells$Site_Name)
     mutate(diff = if_else(diff> -0.1, 0, 1)) %>%
     mutate(diff = rollapply(diff, 10, sum, align='right', fill=NA)) %>%
     filter(diff == 0)
+
+  #Insert Plot function
   
-  plot(df$Timestamp, df$waterColumnEquivalentHeightAbsolute, type="l")
+  #Manual Edits
+  df$pressureAbsolute<-if_else(df$Timestamp< mdy("11/30/2017"), 
+                               lead(df$pressureAbsolute, n=60), #Substract 5 hours
+                               df$pressureAbsolute)
+  df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
   
-    
-    
+ 
+  
+
+
+
+
   
   
   
   
   
+ 
   
   
-  
+  ##########################################################################################
   #For funzies----------------------
   #load libraries
   library(xts)
@@ -397,8 +442,9 @@ sites<-unique(wells$Site_Name)
   
   #format data
   df_xts<-df %>% 
-    select(Timestamp, barometricPressure, pressureAbsolute) %>% 
-    mutate(barometricPressure = barometricPressure + 16)
+    select(Timestamp,waterColumnEquivalentHeightAbsolute) %>% #, barometricPressure, pressureAbsolute) %>% #barometricPressure, pressureAbsolute) %>% 
+    mutate(Timestamp = with_tz(Timestamp,"America/New_York")) %>%
+    mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100) %>%
     na.omit() 
   df_xts<-xts(df_xts, order.by=df_xts$Timestamp)
   df_xts<-df_xts[,-1]
@@ -412,7 +458,7 @@ sites<-unique(wells$Site_Name)
     dyHighlight(highlightCircleSize = 5,
                 highlightSeriesBackgroundAlpha = 0.2,
                 hideOnMouseOut = FALSE) %>%
-    dyAxis("y", label = "Water Level [m]")
+    dyAxis("y", label = "Relative Water Level [cm]")
   
 #Thnigs to do next --------------
 #Download atmospheric pressure data for each well
