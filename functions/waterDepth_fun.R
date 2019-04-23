@@ -1,5 +1,6 @@
-waterDepth_fun<-function(Site,df, wells){
+waterDepth_fun<-function(Site,df, wells, survey){
 
+#Process download data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify well depths at each download
 depths<-wells %>% 
   dplyr::filter(Site_Name==Site) %>%
@@ -8,7 +9,6 @@ depths<-wells %>%
   dplyr::mutate(Timestamp = floor_date(Timestamp, unit="day")) %>%
   dplyr::select(Timestamp, Relative_Water_Level_m) 
   
-
 #Estimate water height on downlaod dates
 temp<-df %>%
   #Select timestamp and waterHeight
@@ -20,22 +20,46 @@ temp<-df %>%
   summarise(waterHeight = mean(waterColumnEquivalentHeightAbsolute))
 
 #Merge depths and df
-depths<- left_join(depths, temp) %>%
+output<- left_join(depths, temp) %>%
   #Calculate difference
-  mutate(diff = Relative_Water_Level_m - waterHeight) %>%
-  #Remove Outliers
-  mutate(mean_diff = abs(diff-median(diff)), 
-         sd_diff   = sd(diff), 
-         outlier  = 2*sd_diff/mean_diff) %>%
-  filter(outlier>1) 
+  mutate(diff = Relative_Water_Level_m - waterHeight, 
+         measurement = "downlaod")  %>%
+  #Select collumns
+  select(diff, measurement)
 
-#Estimate offset
-offset<-median(depths$diff)
+#Process survey data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify Site Name
+site<-substr(Site, 1,2)
 
-#Estimate water depth [where 0 = wetland invert]
-output<-df %>%
-  mutate(waterDepth = waterColumnEquivalentHeightAbsolute + offset)
+#If survey data exists
+if(site %in% survey$Wetland){
+  
+  #Identify survey data and create long format
+  survey<-survey %>% 
+    filter(Wetland==site) %>%
+    gather(.) %>%
+    filter(value != -9999)
+  
+  #Seperate date
+  date<-mdy(survey$value[survey$key=="Date"])
+  survey<-survey %>% 
+    filter(key!="Date") %>% filter(key!="Wetland") %>%
+    mutate(value = as.numeric(paste(value)))
+  
+  #Estiamte wl on date
+  stage<-temp$waterHeight[temp$Timestamp==date]
+  
+  #Estiamte Values
+  survey <- survey %>%
+    mutate(value = value - stage) %>%
+    rename(diff = value,
+           measurement = key) %>%
+    select(diff, measurement)
 
-#print output
+  #Merge with output
+  output<-output %>% bind_rows(.,survey)
+}
+
+#Export output
 output
 }
