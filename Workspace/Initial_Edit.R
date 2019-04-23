@@ -10,6 +10,7 @@
   #2: Ask greg for missing 2017 data...
   #3: Spot check USDA data
   #4: Look at weird jump Jan 12 in DF and QB
+  #5: Get Anna data through 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Setup Worskspace ---------------------------------------------------------
@@ -382,6 +383,7 @@ survey<-read_csv(paste0(working_dir,"survey_data/survey_V1.csv"))
   #Estimate water level using waterLevel_fun [if upland well]
   #Upload to db
 
+#5.3 Process wetland water level data-----------------------------------------------
 #BB Wetland Well Shallow------------------------------------------------------------
 #Download data from files~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 df<-waterHeight_fun("BB Wetland Well Shallow", wells, db, working_dir)
@@ -467,7 +469,7 @@ df<-df %>% filter(Timestamp<mdy_h("11/30/2017 9") | Timestamp>mdy_h("11/30/2017 
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate offset
-offset<-waterDepth_fun("DK Wetland Well Shallow", df, wells, survey) %>%
+offset<-waterDepth_fun("DB Wetland Well Shallow", df, wells, survey) %>%
   filter(measurement == "Water Depth (m)") %>%
   select(diff)
 
@@ -578,6 +580,9 @@ offset<-waterDepth_fun("DF Wetland Well Shallow", df, wells, survey) %>%
 #Caclulate water depth
 df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
 
+#remove na's
+df<-na.omit(df)
+
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
                  select(Timestamp,
@@ -635,7 +640,7 @@ df<-df[!(df$Timestamp==(t_event-minutes(5))),]
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate offset
-offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+offset<-waterDepth_fun("DK Wetland Well Shallow", df, wells, survey) %>%
   filter(measurement == "Water Depth (m)") %>%
   select(diff)
 
@@ -788,7 +793,7 @@ df<-df %>% filter(floor_date(Timestamp, unit="day")!=mdy("11/29/17"))
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate offset
-offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+offset<-waterDepth_fun("ND Wetland Well Shallow", df, wells, survey) %>%
   filter(measurement == "Water Depth (m)") %>%
   select(diff)
 
@@ -852,7 +857,7 @@ df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressu
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate offset
-offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+offset<-waterDepth_fun("TB Wetland Well Shallow", df, wells, survey) %>%
   filter(measurement == "Water Depth (m)") %>%
   select(diff)
 
@@ -935,7 +940,7 @@ dygraph_ts_fun(df %>%
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate offset
-offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+offset<-waterDepth_fun("QB Wetland Well Shallow", df, wells, survey) %>%
   filter(measurement == "Water Depth (m)") %>%
   select(diff)
 
@@ -968,10 +973,40 @@ tf-t0
 #Clean up workspace
 remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
-                   ls()!='files' &
-                   ls()!='wells' &
-                   ls()!='survey' &
-                   ls()!='db_get_ts' &
-                   ls()!='waterDepth_fun' &
-                   ls()!='waterHeight_fun' &
-                   ls()!='dygraph_ts_fun'])
+                   ls()!='db_get_ts'])
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Step 6: Pring data----------------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Pull data from DB
+BB<-db_get_ts(db, "BB Wetland Well Shallow", variable_code_CV = "waterDepth", mdy("10/1/2017"), mdy("9/30/2018")) %>%
+  mutate(site="BB Wetland Well Shallow")
+DB<-db_get_ts(db, "DB Wetland Well Shallow", variable_code_CV = "waterDepth", mdy("10/1/2017"), mdy("9/30/2018")) %>%
+  mutate(site="DB Wetland Well Shallow")
+DK<-db_get_ts(db, "DK Wetland Well Shallow", variable_code_CV = "waterDepth", mdy("10/1/2017"), mdy("9/30/2018")) %>%
+  mutate(site="DK Wetland Well Shallow")
+GN<-db_get_ts(db, "GN Wetland Well Shallow", variable_code_CV = "waterDepth", mdy("10/1/2017"), mdy("9/30/2018")) %>%
+  mutate(site="GN Wetland Well Shallow")
+ND<-db_get_ts(db, "ND Wetland Well Shallow", variable_code_CV = "waterDepth", mdy("10/1/2017"), mdy("9/30/2018")) %>%
+  mutate(site="ND Wetland Well Shallow")
+TB<-db_get_ts(db, "TB Wetland Well Shallow", variable_code_CV = "waterDepth", mdy("10/1/2017"), mdy("9/30/2018")) %>%
+  mutate(site="TB Wetland Well Shallow")
+QB<-db_get_ts(db, "QB Wetland Well Shallow", variable_code_CV = "waterDepth", mdy("10/1/2017"), mdy("9/30/2018")) %>%
+  mutate(site="QB Wetland Well Shallow")
+
+#Create one large dataframe
+df<-bind_rows(BB, DB, DK, GN, ND, TB, QB)
+
+#tidy
+df<-df %>%
+  mutate(day = floor_date(Timestamp,"day")) %>%
+  select(day, site, waterDepth) %>%
+  group_by(day, site) %>%
+  summarise(waterDepth=mean(waterDepth, na.rm=T)) %>%
+  spread(site, waterDepth)
+
+#export
+write_csv(df, paste0(working_dir,"initial_output.csv"))
+
+#Disconnect from db
+dbDisconnect(db)
