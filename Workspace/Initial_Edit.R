@@ -9,8 +9,7 @@
   #1: Deal with differences between downloads. 
   #2: Ask greg for missing 2017 data...
   #3: Spot check USDA data
-
-
+  #4: Look at weird jump Jan 12 in DF and QB
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Setup Worskspace ---------------------------------------------------------
@@ -43,7 +42,7 @@ Sys.setenv(TZ="America/New_York")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #2.1 Create dabase~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Create SQLight databse (only do this once)
-db <- create_sqlite(dir = working_dir, filename = "test", connect = T)
+db <- create_sqlite(dir = working_dir, filename = "choptank", connect = T)
 
 #2.2 Insert equipment iunformation~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Load existing equipment table
@@ -133,7 +132,6 @@ db_describe_variable(db,
                      variabletypecv = "Hydrology",
                      variablecode   = "waterLevel",
                      variablenamecv = "waterLevel")
-
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Create file lookup table--------------------------------------------------
@@ -374,6 +372,9 @@ source("functions/dygraph_ts_fun.R")
 #Identify unique sites
 sites<-unique(wells$Site_Name)
 
+#Download survey data
+survey<-read_csv(paste0(working_dir,"survey_data/survey_V1.csv"))
+
 #Order of opperations for indiviudal sonde data
   #Download files and estiamte height using waterHeight_fun
   #Conduct manual edits on water level data
@@ -404,8 +405,14 @@ df<-df %>% filter(Timestamp<mdy_h("11/30/2017 9") | Timestamp>mdy_h("11/30/2017 
 #Remove 
 df<-df %>% filter(Timestamp> mdy("9/28/2017"))
 
-#Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-df<-waterDepth_fun("BB Wetland Well Shallow", df, wells)
+#Estimate Water Depth~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate offset
+offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+  filter(measurement == "Water Depth (m)") %>%
+  select(diff)
+
+#Caclulate water depth
+df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
 
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
@@ -437,6 +444,7 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
                    ls()!='files' &
                    ls()!='wells' &
+                   ls()!='survey' &
                    ls()!='db_get_ts' &
                    ls()!='waterDepth_fun' &
                    ls()!='waterHeight_fun' &
@@ -458,7 +466,13 @@ df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressu
 df<-df %>% filter(Timestamp<mdy_h("11/30/2017 9") | Timestamp>mdy_h("11/30/2017 16"))
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-df<-waterDepth_fun("DK Wetland Well Shallow", df, wells)
+#Estimate offset
+offset<-waterDepth_fun("DK Wetland Well Shallow", df, wells, survey) %>%
+  filter(measurement == "Water Depth (m)") %>%
+  select(diff)
+
+#Caclulate water depth
+df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
 
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
@@ -489,6 +503,111 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
                    ls()!='files' &
                    ls()!='wells' &
+                   ls()!='survey' &
+                   ls()!='db_get_ts' &
+                   ls()!='waterDepth_fun' &
+                   ls()!='waterHeight_fun' &
+                   ls()!='dygraph_ts_fun'])
+
+#DF Wetland Well Shallow------------------------------------------------------------
+#Download data from files~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+df<-waterHeight_fun("DF Wetland Well Shallow", wells, db, working_dir)
+
+#Conduct any manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove firt three days [before PT deployment]
+df<-df %>% filter(Timestamp > mdy("9/30/2017"))
+
+#Adjust tiem before Nov 30
+df$pressureAbsolute<-if_else(df$Timestamp< mdy("11/30/2017"), 
+                             lead(df$pressureAbsolute, n=60), #Substract 5 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+df<-df %>% filter(Timestamp<mdy_h("11/30/2017 9") | Timestamp>mdy_h("11/30/2017 16"))
+
+#Adjust tiem between Nov 30 and Jan 13
+df$pressureAbsolute<-if_else(df$Timestamp > mdy("11/30/2017") &
+                             df$Timestamp < mdy("1/13/2018"),
+                             lead(df$pressureAbsolute, n=72), #Substract 5 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+
+
+#Adjust time between Jan 13 and March 4
+df$pressureAbsolute<-if_else(df$Timestamp > mdy("1/13/2018") &
+                               df$Timestamp < mdy("3/4/2018"),
+                             lag(df$pressureAbsolute, n=216), #Add 6 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+df<-df %>% filter(Timestamp<mdy("1/12/2018") | Timestamp>mdy("1/15/2018"))
+
+#Adjust time between March 4 and April 28
+df$pressureAbsolute<-if_else(df$Timestamp > mdy("3/4/2018") &
+                               df$Timestamp < mdy("4/29/2018"),
+                             lead(df$pressureAbsolute, n=70), #Add 6 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+
+#Adjust time between April 28 and June 5
+df$pressureAbsolute<-if_else(df$Timestamp > mdy("4/29/2018") &
+                               df$Timestamp < mdy("6/30/2018"),
+                             lead(df$pressureAbsolute, n=67), #Add 6 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+
+#Adjust time between April 28 and June 5
+df$pressureAbsolute<-if_else(df$Timestamp > mdy("6/30/2018") &
+                               df$Timestamp < mdy("9/11/2018"),
+                             lead(df$pressureAbsolute, n=76), #Add 6 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+
+#Adjust time between April 28 and June 5
+df$pressureAbsolute<-if_else(df$Timestamp > mdy("9/11/2018") &
+                               df$Timestamp < mdy("10/10/2018"),
+                             lead(df$pressureAbsolute, n=69), #Add 6 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+
+#Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate offset
+offset<-waterDepth_fun("DF Wetland Well Shallow", df, wells, survey) %>%
+  na.omit() %>%
+  filter(diff > -1) %>%
+  group_by(measurement) %>% summarise(diff = mean(diff))
+
+#Caclulate water depth
+df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
+
+#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dygraph_ts_fun(df %>%
+                 select(Timestamp,
+                        temp,
+                        waterDepth) %>%
+                 mutate(waterDepth = waterDepth*100+100))
+
+#Insert into the db~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = "DF Wetland Well Shallow",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#Clean up workspace
+remove(list=ls()[ls()!='working_dir' &
+                   ls()!='db' &
+                   ls()!='files' &
+                   ls()!='wells' &
+                   ls()!='survey' &
                    ls()!='db_get_ts' &
                    ls()!='waterDepth_fun' &
                    ls()!='waterHeight_fun' &
@@ -515,7 +634,13 @@ df<-df[!(df$Timestamp==t_event),]
 df<-df[!(df$Timestamp==(t_event-minutes(5))),]
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-df<-waterDepth_fun("DK Wetland Well Shallow", df, wells)
+#Estimate offset
+offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+  filter(measurement == "Water Depth (m)") %>%
+  select(diff)
+
+#Caclulate water depth
+df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
 
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
@@ -545,6 +670,7 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
                    ls()!='files' &
                    ls()!='wells' &
+                   ls()!='survey' &
                    ls()!='db_get_ts' &
                    ls()!='waterDepth_fun' &
                    ls()!='waterHeight_fun' &
@@ -627,6 +753,7 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
                    ls()!='files' &
                    ls()!='wells' &
+                   ls()!='survey' &
                    ls()!='db_get_ts' &
                    ls()!='waterDepth_fun' &
                    ls()!='waterHeight_fun' &
@@ -660,7 +787,13 @@ df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressu
 df<-df %>% filter(floor_date(Timestamp, unit="day")!=mdy("11/29/17"))
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-df<-waterDepth_fun("ND Wetland Well Shallow", df, wells)
+#Estimate offset
+offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+  filter(measurement == "Water Depth (m)") %>%
+  select(diff)
+
+#Caclulate water depth
+df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
 
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
@@ -692,11 +825,11 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
                    ls()!='files' &
                    ls()!='wells' &
+                   ls()!='survey' &
                    ls()!='db_get_ts' &
                    ls()!='waterDepth_fun' &
                    ls()!='waterHeight_fun' &
                    ls()!='dygraph_ts_fun'])
-
 
 #TB Wetland Well Shallow------------------------------------------------------------
 #Download data from files~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -717,16 +850,14 @@ df$pressureAbsolute<-if_else(df$Timestamp<= mdy("10/20/2017"),
                              df$pressureAbsolute)
 df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
 
-#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-dygraph_ts_fun(df %>%
-                 select(Timestamp,
-                        barometricPressure,
-                        pressureAbsolute,
-                        waterColumnEquivalentHeightAbsolute) %>%
-                 mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100))
-
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-df<-waterDepth_fun("TB Wetland Well Shallow", df, wells)
+#Estimate offset
+offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+  filter(measurement == "Water Depth (m)") %>%
+  select(diff)
+
+#Caclulate water depth
+df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
 
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
@@ -758,6 +889,7 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
                    ls()!='files' &
                    ls()!='wells' &
+                   ls()!='survey' &
                    ls()!='db_get_ts' &
                    ls()!='waterDepth_fun' &
                    ls()!='waterHeight_fun' &
@@ -768,63 +900,51 @@ remove(list=ls()[ls()!='working_dir' &
 df<-waterHeight_fun("QB Wetland Well Shallow", wells, db, working_dir)
 
 #Conduct any manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#Remove rando outlier
 df<- df %>% filter(pressureAbsolute<125)
+
 #Adjust time between 1/13 and 4/28
 df$pressureAbsolute<-if_else(df$Timestamp> mdy("1/12/2018") &
                                df$Timestamp< mdy("3/3/2018"), 
                              lag(df$pressureAbsolute, n=288), #Substract 5 hours
                              df$pressureAbsolute)
 df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
-#df<-df %>% filter(Timestamp<mdy_h("11/30/2017 9") | Timestamp>mdy_h("11/30/2017 16"))
 
-#Janurary 12
-#March 6
+#Remove odd gaps
+df<-df %>% filter(Timestamp>mdy("12/1/2017"))
+df<-df %>% filter(Timestamp<mdy("1/12/2018") | Timestamp>mdy("1/15/2018"))
+df<-df %>% filter(Timestamp<mdy("3/2/2018") | Timestamp>mdy("3/6/2018"))
 
-
-#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-dygraph_ts_fun(df %>%
-                 select(Timestamp,
-                        barometricPressure,
-                        pressureAbsolute,
-                        waterColumnEquivalentHeightAbsolute) %>%
-                 mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100))
-
-#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-dygraph_ts_fun(df %>%
-                 select(Timestamp,
-                        barometricPressure,
-                        pressureAbsolute,
-                        waterColumnEquivalentHeightAbsolute) %>%
-                 mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100))
-
-
-
-
-
-
-
-
-
-
-#----------- scratch space below
-
+#Gap fill before December wtih DF
+gap<-db_get_ts(db, "DF Wetland Well Shallow", "waterDepth", mdy("10/1/2017"),mdy("11/30/2017"))
+diff<-mean(gap$waterDepth[(nrow(gap)-12):nrow(gap)]) - mean(df$waterColumnEquivalentHeightAbsolute[1:10])
+gap <-gap %>% 
+  mutate(waterColumnEquivalentHeightAbsolute = waterDepth-diff) %>% 
+  select(Timestamp, waterColumnEquivalentHeightAbsolute)
+df<-df %>% 
+  select(Timestamp, waterColumnEquivalentHeightAbsolute) %>%
+  bind_rows(df, gap) %>%
+  arrange(Timestamp)
 
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
                  select(Timestamp,
-                        barometricPressure,
-                        pressureAbsolute,
                         waterColumnEquivalentHeightAbsolute) %>%
                  mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100))
 
 #Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-df<-waterDepth_fun("QB Wetland Well Shallow", df, wells)
+#Estimate offset
+offset<-waterDepth_fun("BB Wetland Well Shallow", df, wells, survey) %>%
+  filter(measurement == "Water Depth (m)") %>%
+  select(diff)
+
+#Caclulate water depth
+df$waterDepth<-df$waterColumnEquivalentHeightAbsolute+offset$diff
 
 #Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dygraph_ts_fun(df %>%
                  select(Timestamp,
-                        barometricPressure,
-                        pressureAbsolute,
                         waterDepth) %>%
                  mutate(waterDepth = waterDepth*100+100))
 
@@ -850,6 +970,7 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
                    ls()!='files' &
                    ls()!='wells' &
+                   ls()!='survey' &
                    ls()!='db_get_ts' &
                    ls()!='waterDepth_fun' &
                    ls()!='waterHeight_fun' &
