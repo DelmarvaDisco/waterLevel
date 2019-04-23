@@ -7,6 +7,8 @@
 
 #Things to do:
   #1: Deal with differences between downloads. 
+  #2: Ask greg for missing 2017 data...
+  #3: Spot check USDA data
 
 
 
@@ -27,6 +29,7 @@ library(DBI)
 library(rodm2)
 library(zoo)
 library(lubridate)
+library(readxl)
 library(tidyverse)
 
 #Define working dir
@@ -347,9 +350,17 @@ files<-files %>%
                                  download_date)) %>%
   mutate(download_date = if_else(download_date == mdy("10/10/2018"), 
                                  mdy("10/11/2018"), 
-                                 download_date))
+                                 download_date)) %>%
+  mutate(download_date = if_else(download_date == mdy("4/26/2018"), 
+                                 mdy("4/28/2018"), 
+                                 download_date)) %>%
+  mutate(download_date = if_else(download_date == mdy("3/4/2018"), 
+                                 mdy("3/5/2018"), 
+                                 download_date)) %>%
+  mutate(download_date = if_else(download_date == mdy("10/11/2018"), 
+                                 mdy("10/10/2018"), 
+                                 download_date)) 
   
-
 #join to master lookup table!
 wells<-left_join(wells, files, by = c("download_date" = "download_date", "Sonde_ID" = "Sonde_ID"))
 
@@ -539,6 +550,88 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='waterHeight_fun' &
                    ls()!='dygraph_ts_fun'])
 
+#GN Wetland Well Shallow------------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~ USDA-ARS maintains this wells ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Download data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#download data
+df<-readxl::read_xlsx(paste0(working_dir,"USDA_JacksonLane/Data_JacksonLane.xlsx"))
+
+#Gap fill data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Organize
+model<-df %>% 
+  #Select wetlands of interest
+  select(Date, JRES_sw, JNAT_sw) %>%
+  #rename collumns
+  rename(Timestamp = Date,
+         nat       = JNAT_sw,
+         res       = JRES_sw) %>%
+  #Remove NAs
+  na.omit()
+
+#Create polynomial regression for gap filling
+model<-lm(nat ~ poly(res,5), data=model)
+
+#Project model onto missing data
+df<-df %>% 
+  #Select wetlands of interest
+  select(Date, JRES_sw, JNAT_sw) %>%
+  #rename collumns
+  rename(Timestamp = Date,
+         nat       = JNAT_sw,
+         res       = JRES_sw) 
+df$predicted<-predict(model, data.frame(res = df$res))
+
+#Plot
+plot(df$res, df$nat, pch=19, col="grey30", cex=.3)
+points(df$res, df$predicted, pch=19, col="red", cex=0.3)
+
+#Gap fill
+df<-df %>% 
+  #Gap fill
+  mutate(nat = if_else(is.na(nat), 
+                       predicted,
+                       nat)) %>%
+  #Organize Columns
+  rename(waterDepth = nat) %>%
+  select(Timestamp, waterDepth) %>%
+  #Force TZ
+  mutate(Timestamp = force_tz(Timestamp, "America/New_York")) %>%
+  #Remove NA
+  na.omit()
+
+#plot for funzies
+dygraph_ts_fun(df %>%
+                 select(Timestamp,
+                        waterDepth) %>%
+                 mutate(waterDepth = waterDepth*100+100))
+
+#Export to databse~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = "GN Wetland Well Shallow",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter")))
+tf<-Sys.time()
+tf-t0
+
+#Clean up workspace
+remove(list=ls()[ls()!='working_dir' &
+                   ls()!='db' &
+                   ls()!='files' &
+                   ls()!='wells' &
+                   ls()!='db_get_ts' &
+                   ls()!='waterDepth_fun' &
+                   ls()!='waterHeight_fun' &
+                   ls()!='dygraph_ts_fun'])
+
 #ND Wetland Well Shallow------------------------------------------------------------
 #Download data from files~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 df<-waterHeight_fun("ND Wetland Well Shallow", wells, db, working_dir)
@@ -650,6 +743,98 @@ rodm2::db_insert_results_ts(db = db,
                             datavalues = df,
                             method = "waterdepth",
                             site_code = "TB Wetland Well Shallow",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#Clean up workspace
+remove(list=ls()[ls()!='working_dir' &
+                   ls()!='db' &
+                   ls()!='files' &
+                   ls()!='wells' &
+                   ls()!='db_get_ts' &
+                   ls()!='waterDepth_fun' &
+                   ls()!='waterHeight_fun' &
+                   ls()!='dygraph_ts_fun'])
+
+#QB Wetland Well Shallow------------------------------------------------------------
+#Download data from files~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+df<-waterHeight_fun("QB Wetland Well Shallow", wells, db, working_dir)
+
+#Conduct any manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+df<- df %>% filter(pressureAbsolute<125)
+#Adjust time between 1/13 and 4/28
+df$pressureAbsolute<-if_else(df$Timestamp> mdy("1/12/2018") &
+                               df$Timestamp< mdy("3/3/2018"), 
+                             lag(df$pressureAbsolute, n=288), #Substract 5 hours
+                             df$pressureAbsolute)
+df$waterColumnEquivalentHeightAbsolute<-(df$pressureAbsolute-df$barometricPressure)*0.101972
+#df<-df %>% filter(Timestamp<mdy_h("11/30/2017 9") | Timestamp>mdy_h("11/30/2017 16"))
+
+#Janurary 12
+#March 6
+
+
+#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dygraph_ts_fun(df %>%
+                 select(Timestamp,
+                        barometricPressure,
+                        pressureAbsolute,
+                        waterColumnEquivalentHeightAbsolute) %>%
+                 mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100))
+
+#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dygraph_ts_fun(df %>%
+                 select(Timestamp,
+                        barometricPressure,
+                        pressureAbsolute,
+                        waterColumnEquivalentHeightAbsolute) %>%
+                 mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100))
+
+
+
+
+
+
+
+
+
+
+#----------- scratch space below
+
+
+#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dygraph_ts_fun(df %>%
+                 select(Timestamp,
+                        barometricPressure,
+                        pressureAbsolute,
+                        waterColumnEquivalentHeightAbsolute) %>%
+                 mutate(waterColumnEquivalentHeightAbsolute = waterColumnEquivalentHeightAbsolute*100))
+
+#Estimate Water Level~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+df<-waterDepth_fun("QB Wetland Well Shallow", df, wells)
+
+#Plot the data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dygraph_ts_fun(df %>%
+                 select(Timestamp,
+                        barometricPressure,
+                        pressureAbsolute,
+                        waterDepth) %>%
+                 mutate(waterDepth = waterDepth*100+100))
+
+#Insert into the db~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = "QB Wetland Well Shallow",
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
