@@ -32,7 +32,6 @@ source("functions/zipper_fun.R")
 source("functions/waterHeight_fun.R")
 source("functions/waterDepth_fun.R")
 
-
 #Define working dir
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
 
@@ -41,6 +40,9 @@ Sys.setenv(TZ="America/New_York")
 
 #Define database connection
 db<-dbConnect(RSQLite::SQLite(),"//nfs/palmer-group-data/Choptank/Nate/PT_Data/choptank.sqlite")
+
+#Download survey data 
+survey<-read_csv(paste0(working_dir,"survey_data/survey_V1.csv"))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #2.0 Create lookup table for PT data files------------------------------------------
@@ -278,13 +280,40 @@ tf-t0
 #Clean up workspace
 remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
-                   ls()!='files'])
+                   ls()!='files' & 
+                   ls()!='survey' & 
+                   ls()!='wells'])
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #4.0 Estimate Surface Water Level --------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Read custom R functions
+source("functions/download_fun.R")
+source("functions/dygraph_ts_fun.R")
+source("functions/zipper_fun.R")
+source("functions/waterHeight_fun.R")
+source("functions/waterDepth_fun.R")
+source("functions/baro_fun.R")
+source("functions/db_get_ts.R")
 
+#4.1 BB Wetland Well Shallow--------------------------------------------------------
+#Identify well info
+well_log<-wells %>% filter(Site_Name=="TB Wetland Well Shallow") %>% na.omit()
 
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
 
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
+#Zipper function
+df<-waterDepth_fun(Timestamp = df$Timestamp, 
+                   pressureAbsolute = df$pressureAbsolute, 
+                   barometricPressure = df$barometricPressure, 
+                   start_date = well_log$start_date, 
+                   end_date = well_log$end_date, 
+                   download_datetime = well_log$download_datetime)
+#Plot
+df$waterHeight<-df$waterHeight*100
+dygraph_ts_fun(df)
 
