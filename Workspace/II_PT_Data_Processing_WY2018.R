@@ -1,0 +1,290 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Name: Initial PT Data Processing
+# Coder: C. Nathan Jones
+# Date: 16 April 2019
+# Purpose: Process PT Data collected across the Palmer Lab Delmarva wetland sites
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#1.0 Setup Worskspace---------------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#clear environment
+remove(list=ls())
+
+#load relevant packages
+library(xts)
+library(dygraphs)
+library(parallel)
+library(devtools)
+devtools::install_github("khondula/rodm2")
+library(RSQLite)
+library(DBI)
+library(rodm2)
+library(zoo)
+library(lubridate)
+library(readxl)
+library(tidyverse)
+
+#Read custom R functions
+source("functions/download_fun.R")
+source("functions/dygraph_ts_fun.R")
+source("functions/zipper_fun.R")
+source("functions/waterHeight_fun.R")
+source("functions/waterDepth_fun.R")
+
+
+#Define working dir
+working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
+
+#Set system time zone 
+Sys.setenv(TZ="America/New_York")
+
+#Define database connection
+db<-dbConnect(RSQLite::SQLite(),"//nfs/palmer-group-data/Choptank/Nate/PT_Data/choptank.sqlite")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#2.0 Create lookup table for PT data files------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#2.1 Compile a list of file paths---------------------------------------------------
+#Identify files with HOBO export files
+files<-list.files(working_dir, recursive = T)
+files<-files[substr(files,nchar(files)-2,nchar(files))=="csv"] 
+files<-files[grep(files,pattern = "export")]
+
+#Remove non-relevant files 
+files<-files[-grep(files,pattern = 'archive')]
+
+#Create function to retrieve info from each file
+file_fun<-function(n){
+  
+  #Download data
+  temp<-read_csv(paste0(working_dir,files[n]), skip=1)
+  
+  #Determine serial number
+  serial_number<-colnames(temp)[grep("LGR",colnames(temp))][1]  #Find collumn name with serial number
+  serial_number<-substr(serial_number,   #isolate serial number
+                        gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
+                        nchar(serial_number)-1) #stop
+  serial_number<-as.numeric(serial_number) 
+  
+  #Determine TZ
+  time_zone<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
+  time_zone<-substr(time_zone,
+                    regexpr('GMT', time_zone)[1],
+                    nchar(time_zone))
+  time_zone<-if_else(time_zone=="GMT-04:00",
+                     "EST",
+                     if_else(time_zone=="GMT-05:00",
+                             "EDT",
+                             "-9999"))
+  #Determin units
+  units<-colnames(temp)[grep("Abs Pres,",colnames(temp))]
+  units<-substr(units,
+                regexpr("Abs Pres,", units)+10,
+                regexpr("Abs Pres,", units)+12)
+  
+  #Organize
+  colnames(temp)<-c("ID","Timestamp","pressureAbsolute", "temp")
+  temp<-temp[,c("Timestamp","pressureAbsolute", "temp")]
+  temp<-temp %>%
+    #Select collumns of interest
+    dplyr::select(Timestamp, pressureAbsolute, temp) %>%
+    #Convert to POSIX
+    dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"), tz = time_zone))  %>%
+    #Convert to GMT
+    dplyr::mutate(Timestamp = with_tz(Timestamp, "GMT")) %>%
+    #Order the intput
+    dplyr::arrange(Timestamp)
+  
+  #create output
+  tibble(path       = files[n], 
+         Sonde_ID   = serial_number,
+         units      = units, 
+         start_date = min(temp$Timestamp), 
+         end_date   = max(temp$Timestamp))
+}
+
+#run function
+files<-mclapply(X = seq(1,length(files)), FUN = file_fun, mc.cores = detectCores())
+files<-bind_rows(files)
+
+#2.2 Compile well log information---------------------------------------------------
+#Create list of file paths
+wells<-list.files(working_dir, recursive = T)
+wells<-wells[grep(wells,pattern = 'well_log')]
+wells<-wells[-grep(wells,pattern = 'archive')]
+
+#Create function to download well log files
+log_fun<-function(n){
+  
+  #Download well log
+  temp<-read_csv(paste0(working_dir,wells[n]))
+  
+  #export temp
+  temp
+}
+
+#run function
+wells<-mclapply(X = seq(1,length(wells)), FUN = log_fun)
+wells<-bind_rows(wells)
+
+#Convert times to GMT
+wells<-wells %>%
+  #Define Timestamp
+  mutate(Timestamp = mdy(Date)) %>%
+  #Convert to POSIXct and GMT
+  mutate(Timestamp = as.POSIXct(Date, format = "%m/%d/%Y", tz = "America/New_York")) %>%
+  mutate(Timestamp = with_tz(Timestamp, "GMT")) %>%
+  #Add time
+  mutate(Timestamp = Timestamp + Time) %>%
+  #Idenitfy download date
+  mutate(download_date = lubridate::date(Timestamp), 
+         download_datetime = Timestamp) %>%
+  #Select relevant collumsn
+  select(Site_Name, Sonde_ID, download_date, download_datetime, Relative_Water_Level_m)
+
+#Prep files df to join
+files <- files %>%
+  #estimate download date
+  mutate(download_date = date(end_date))
+
+#Correct "download" data where appropratie
+files<-files %>%
+  #USDA Wells (Lag between handoff)
+  mutate(download_date = if_else(download_date == ymd("2017-12-22"), 
+                                 ymd("2018-04-09"), 
+                                 download_date)) %>%
+  #Mikey Likey and Dark Bay [Download error?]
+  mutate(download_date = if_else(download_date == ymd("2018-01-04"), 
+                                 ymd("2018-02-10"), 
+                                 download_date)) %>%
+  #Download Error
+  mutate(download_date = if_else(download_date == ymd("2017-12-12"), 
+                                 ymd("2017-12-20"), 
+                                 download_date)) %>%
+  #Potential offet issue
+  mutate(download_date = if_else(download_date == ymd("2018-03-03"), 
+                                 ymd("2018-03-04"), 
+                                 download_date)) %>%
+  #Potential offet issue
+  mutate(download_date = if_else(download_date == ymd("2018-04-26"), 
+                                 ymd("2018-04-28"), 
+                                 download_date)) %>%
+  #Download date diff
+  mutate(download_date = if_else(download_date == ymd("2018-06-23"), 
+                                 ymd("2018-06-24"), 
+                                 download_date)) 
+  
+#join to master lookup table!
+wells<-left_join(wells, files) 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#3.0 Compile Barometric Pressure Logger Info----------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Gather data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Define Baro Loggers
+baro_id<-c("10589038", #QB Baro
+           "10808360") #GR Baro
+
+#Define Baro Logger Files
+baro_files<-wells[wells$Sonde_ID %in% baro_id,] %>% filter(!is.na(path))
+
+#run function
+baro<-mclapply(X = paste0(working_dir,baro_files$path), FUN = download_fun, mc.cores = detectCores()) %>% bind_rows()
+
+#Organize barometric pressure
+baro<-baro %>%
+  #rename baro collumn
+  rename(barometricPressure=pressureAbsolute) %>%
+  #remove duplicate records from same sonde
+  distinct(.) %>%
+  #Remove na's
+  na.omit()
+
+#Manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#QB Baro Logger
+baro_files %>% 
+  filter(Site_Name == "QB Baro") %>% 
+  select(download_date, download_datetime, end_date) %>% 
+  mutate(diff = download_datetime - end_date)
+baro$Timestamp<-if_else(baro$download_date == ymd("2018-01-13"), 
+                        baro$Timestamp + hours(6), 
+                        baro$Timestamp)
+baro$Timestamp<-if_else(baro$download_date == ymd("2018-03-04"), 
+                        baro$Timestamp + hours(5), 
+                        baro$Timestamp)
+baro$Timestamp<-if_else(baro$download_date == ymd("2018-04-28"), 
+                        baro$Timestamp + hours(5), 
+                        baro$Timestamp)
+baro$Timestamp<-if_else(baro$download_date == ymd("2018-06-30"),
+                        baro$Timestamp + hours(5),
+                        baro$Timestamp)
+baro$Timestamp<-if_else(baro$download_date == ymd("2018-09-11"),
+                        baro$Timestamp + hours(5),
+                        baro$Timestamp)
+baro$Timestamp<-if_else(baro$download_date == ymd("2018-10-10"), 
+                        baro$Timestamp + hours(5), 
+                        baro$Timestamp)
+
+#GR Baro Logger
+baro_files %>% 
+  filter(Site_Name == "GR Baro") %>% 
+  select(download_date, download_datetime, end_date) %>% 
+  mutate(diff = download_datetime - end_date)
+baro$Timestamp<-if_else(baro$Sonde_ID == "10808360" & baro$download_date == ymd("2018-06-24"), 
+                        baro$Timestamp - hours(1), 
+                        baro$Timestamp) 
+baro$Timestamp<-if_else(baro$Sonde_ID == "10808360" & baro$download_date == ymd("2018-09-04"), 
+                        baro$Timestamp - hours(1), 
+                        baro$Timestamp) 
+
+#Combine datasets and upload!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Create seperate collumns for each logger
+baro<-baro %>%
+  select(Timestamp, barometricPressure, Sonde_ID) %>% 
+  group_by(Timestamp, Sonde_ID) %>%
+  summarise(barometricPressure = mean(barometricPressure)) %>%
+  spread(Sonde_ID, barometricPressure)  %>%
+  arrange(Timestamp) %>%  
+  rename(QB_Baro=`10589038`, GR_Baro=`10808360`) 
+
+#plot with dygraphs
+dygraph_ts_fun(baro)
+
+#Combine data from both baro loggers
+baro<-baro %>% 
+  mutate(Timestamp_5min = ceiling_date(Timestamp, "5 min")) %>% 
+  group_by(Timestamp) %>% 
+  summarise(QB_Baro = mean(QB_Baro, na.rm=T), 
+            GR_Baro = mean(GR_Baro, na.rm=T)) %>%
+  mutate(barometricPressure = rowMeans(select(.,QB_Baro, GR_Baro), na.rm=T))
+
+#DB Upload~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Insert barometric pressure data into db
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = baro,
+                            method = "baro",
+                            site_code = "BARO",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "barometricPressure" = list(column = "barometricPressure", units = "Kilopascal")))
+tf<-Sys.time()
+tf-t0
+
+#Clean up workspace
+remove(list=ls()[ls()!='working_dir' &
+                   ls()!='db' &
+                   ls()!='files'])
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.0 Estimate Surface Water Level --------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
+
