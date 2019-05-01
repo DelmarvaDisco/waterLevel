@@ -172,7 +172,10 @@ files<-files %>%
                                  download_date)) %>%
   #Potential offet issue
   mutate(download_date = if_else(download_date == ymd("2018-03-03"), 
-                                 ymd("2018-03-04"), 
+                                 ymd("2018-03-05"), 
+                                 download_date)) %>%
+  mutate(download_date = if_else(download_date == ymd("2018-03-04"), 
+                                 ymd("2018-03-05"), 
                                  download_date)) %>%
   #Potential offet issue
   mutate(download_date = if_else(download_date == ymd("2018-04-26"), 
@@ -211,15 +214,12 @@ baro<-baro %>%
 
 #Manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #QB Baro Logger
-baro_files %>% 
-  filter(Site_Name == "QB Baro") %>% 
-  select(download_date, download_datetime, end_date) %>% 
-  mutate(diff = download_datetime - end_date)
+baro_files %>% filter(Site_Name == "QB Baro") 
 baro$Timestamp<-if_else(baro$download_date == ymd("2018-01-13"), 
                         baro$Timestamp + hours(6), 
                         baro$Timestamp)
 baro$Timestamp<-if_else(baro$download_date == ymd("2018-03-04"), 
-                        baro$Timestamp + hours(5), 
+                        baro$Timestamp + days(1) + hours(5), 
                         baro$Timestamp)
 baro$Timestamp<-if_else(baro$download_date == ymd("2018-04-28"), 
                         baro$Timestamp + hours(5), 
@@ -296,8 +296,6 @@ remove(list=ls()[ls()!='working_dir' &
 #Read custom R functions
 source("functions/download_fun.R")
 source("functions/dygraph_ts_fun.R")
-source("functions/zipper_fun.R")
-source("functions/waterHeight_fun.R")
 source("functions/waterDepth_fun.R")
 source("functions/baro_fun.R")
 source("functions/db_get_ts.R")
