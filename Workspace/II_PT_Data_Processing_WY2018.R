@@ -265,7 +265,8 @@ baro<-baro %>%
   group_by(Timestamp_15min) %>% 
   summarise(QB_Baro = mean(QB_Baro, na.rm=T), 
             GR_Baro = mean(GR_Baro, na.rm=T)) %>%
-  mutate(barometricPressure = rowMeans(select(.,QB_Baro, GR_Baro), na.rm=T))
+  mutate(barometricPressure = rowMeans(select(.,QB_Baro, GR_Baro), na.rm=T)) %>%
+  rename(Timestamp=Timestamp_15min)
 
 #DB Upload~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Insert barometric pressure data into db
@@ -310,7 +311,7 @@ df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
-#Zipper function
+#Estimate water depth
 df<-waterDepth_fun(Timestamp = df$Timestamp, 
                    pressureAbsolute = df$pressureAbsolute, 
                    barometricPressure = df$barometricPressure, 
