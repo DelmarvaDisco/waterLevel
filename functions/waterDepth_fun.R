@@ -5,16 +5,30 @@
 # Purpose: Combine PT and Barometric data to estimate Gage Pressure 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-waterDepth_fun<-function(Timestamp, pressureAbsolute, barometricPressure, start_date, end_date, download_datetime){
+waterDepth_fun<-function(Timestamp, 
+                         pressureAbsolute, 
+                         barometricPressure, 
+                         download_date_ts,
+                         download_date_log,
+                         start_date, 
+                         end_date, 
+                         download_datetime, 
+                         force_diff = vector()){
   
   #Organize workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Create tibble with ts
-  df<-tibble(Timestamp, pressureAbsolute, barometricPressure)
+  df<-tibble(Timestamp, pressureAbsolute, barometricPressure, download_date = download_date_ts)
+  
+  #If offset dosn't exist
+  if(length(force_diff)==0){
+    force_diff<-rep(NA, length(download_date_log))
+  }
   
   #Create tibble with periods
-  well_log<-tibble(start_date, end_date, download_datetime) %>%
-    mutate(diff = difftime(download_datetime, end_date, units="hours"), 
-           diff = round(diff,0))
+  well_log<-tibble(download_date=download_date_log, start_date, end_date, download_datetime, force_diff) %>%
+    mutate(log_diff = difftime(download_datetime, end_date, units="hours"), 
+           log_diff = round(log_diff, 0), 
+           est_diff = 0)
   
   #Clip ts to time period
   df<- df %>% 
@@ -35,13 +49,20 @@ waterDepth_fun<-function(Timestamp, pressureAbsolute, barometricPressure, start_
   #Zipper function [minimize variability]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   zipper_fun<-function(n){
     
+    #truncate well_log
+    well_log<-well_log[n,]
+    
     #Select time period of interest
     ts<-df %>%
+      #filter to download date
+      filter(download_date == well_log$download_date) %>%
       #Select relevant collumns
-      select(Timestamp, barometricPressure, pressureAbsolute) %>%
-      #Subset to time period
-      filter(Timestamp>well_log$start_date[n],
-             Timestamp<well_log$end_date[n])
+      select(Timestamp, barometricPressure, pressureAbsolute) 
+    
+    #Estiamte dP
+    ts<-ts %>%
+      mutate(dB = barometricPressure - lag(barometricPressure),
+             dA = pressureAbsolute   - lag(pressureAbsolute))
   
     #Develop function to miinimize variability over ts
     inside_fun<-function(window){
@@ -49,93 +70,96 @@ waterDepth_fun<-function(Timestamp, pressureAbsolute, barometricPressure, start_
       if(window>=0){
         x<-window
         waterHeight<-(lag(ts$pressureAbsolute, x) - ts$barometricPressure)*0.101972
+        diff<- abs(lag(ts$dA, x) - ts$dB)
       }else{
         x<-window*-1
         waterHeight<-(lead(ts$pressureAbsolute, x) - ts$barometricPressure)*0.101972
+        diff<- abs(lead(ts$dA, x) - ts$dB)
       }
       
       #form daily tibble
-      temp<-tibble(Timestamp = ts$Timestamp, waterHeight) %>%
+      temp<-tibble(Timestamp = ts$Timestamp, waterHeight, diff) %>%
         mutate(Timestamp = floor_date(Timestamp, "day")) %>%
         group_by(Timestamp) %>%
-        summarise(var = var(waterHeight,na.rm=T))
+        summarise(var1 = var(diff,na.rm=T),
+                  var2 = var(waterHeight, na.rm=T))
       
       #estimate standard deviation
-      var<-median(temp$var,na.rm=T)
+      var<-median(temp$var1,na.rm=T)*median(temp$var2, na.rm=T)
       
       #Export 
       tibble(window, var)
     }
     
-    #apply inside fun
-    diff<-lapply(seq(-100, 100), inside_fun) %>% 
+    #apply inside fun [on a one hour timestep]
+    diff<-lapply(seq(-100,100), inside_fun) %>% 
       bind_rows() %>% 
       filter(var==min(var, na.rm=T)) %>%
       select(window)
     
-    #Adjust timing on pressure absolute
-    x<-abs(diff$window)
-    if(diff$window>=0){
-      ts$pressureAbsolute<-lag(ts$pressureAbsolute, x) 
+    #estimate time step
+    dt<-median(ts$Timestamp-lag(ts$Timestamp),na.rm=T)
+    
+    #add step to well log
+    well_log$est_diff<-diff$window*dt
+    
+    #Export well log
+    well_log
+  }
+  
+  #Execute zipper_fun  
+  well_log<-mclapply(X = seq(1,nrow(well_log)), 
+                     FUN = zipper_fun) %>% 
+    bind_rows() %>% 
+    arrange(start_date)
+  
+  #Button function [apply offset from zipper fun]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  button_fun<-function(n){
+    
+    #truncate well_log
+    well_log<-well_log[n,]
+    
+    #Select time period of interest
+    ts<-df %>%
+      #filter to download date
+      filter(download_date == well_log$download_date) %>%
+      #Select relevant collumns
+      select(Timestamp, barometricPressure, pressureAbsolute) 
+    
+    #Define offseet
+    if(!is.na(well_log$force_diff)){
+      x<-make_difftime(hours = well_log$force_diff)
     }else{
-      ts$pressureAbsolute<-lead(ts$pressureAbsolute, x) 
+      x<-well_log$est_diff
+    }
+    
+    #Estimate lag
+    dt<-median(ts$Timestamp-lag(ts$Timestamp),na.rm=T)
+    lags<-abs(as.double(x, units="secs")/as.double(dt, units="secs"))
+    
+    #Adjust timing on pressure absolute
+    if(x>=0){
+      ts$pressureAbsolute<-lag(ts$pressureAbsolute, lags) 
+    }else{
+      ts$pressureAbsolute<-lead(ts$pressureAbsolute, lags) 
     }
     
     #Calculate water depth
     ts$pressureGauge <- ts$pressureAbsolute - ts$barometricPressure
     ts$waterHeight<-ts$pressureGauge*0.101972
     
-    #Estimate average timestep
-    timestep<-mean(ts$Timestamp-lag(ts$Timestamp), na.rm=T)
-    
-    #Add diff to df
-    ts$log_diff<-well_log$diff[n]
-    ts$zipper_diff<-diff$window*timestep
-    
     #Export ts
     ts
   }
   
   #Apply zipper fun
-  df<-mclapply(seq(1,nrow(well_log)), zipper_fun) %>% bind_rows() %>% arrange(Timestamp)
+  df<-mclapply(seq(1,nrow(well_log)), button_fun) %>% 
+    bind_rows() %>% 
+    arrange(Timestamp)
+  
+  #Assign well log to global env
+  assign('well_log',well_log, .GlobalEnv)
+  
+  #Export df
+  df
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# #Clip ts to period of interest
-# ts<-df %>%
-#   #Select relevant collumns
-#   select(Timestamp, barometricPressure, pressureAbsolute) %>%
-#   #Subset to time period
-#   filter(Timestamp>well_log$start_date[n], 
-#          Timestamp<well_log$end_date[n]) 
-# 
-# #Apply time offset
-# new_ts<-ts %>% select(Timestamp, pressureAbsolute) %>%
-#   mutate(Timestamp = Timestamp + hours(well_log$diff[n]))
-# ts<-ts %>% select(Timestamp, barometricPressure)
-# 
-# #Estimate gage pressure at each timestep
-# ts<-left_join(new_ts, ts) %>%
-#   mutate(pressureGauge = pressureAbsolute - barometricPressure,
-#          waterColumnEquivalentHeightAbsolute = pressureGauge*0.101972)
-# 
-# #Export ts
-# ts

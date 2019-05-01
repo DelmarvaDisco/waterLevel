@@ -5,11 +5,8 @@
 # Purpose: Process PT Data collected across the Palmer Lab Delmarva wetland sites
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Note for next time [4/30/2019 19:42]-----------------------------------------------
-#There appears to be an issue at 2018-01-13.  Maybe one day off in the baro file? Anyway, this should be investigated 
-#thoroughly. IE Look through the log files you lasy asshole!
-
-#Also--Fix the mess of functins in the function file. Rename gauge_pressure_fun to waterDepth_fun...and more.
-
+#In waterDepth_fun, elevate well_log to .GLobal Env
+#In waterDepth_fun, add manual overide for offset...
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #1.0 Setup Worskspace---------------------------------------------------------------
@@ -180,10 +177,6 @@ files<-files %>%
   #Potential offet issue
   mutate(download_date = if_else(download_date == ymd("2018-04-26"), 
                                  ymd("2018-04-28"), 
-                                 download_date)) %>%
-  #Download date diff
-  mutate(download_date = if_else(download_date == ymd("2018-06-23"), 
-                                 ymd("2018-06-24"), 
                                  download_date)) 
   
 #join to master lookup table!
@@ -216,7 +209,7 @@ baro<-baro %>%
 #QB Baro Logger
 baro_files %>% filter(Site_Name == "QB Baro") 
 baro$Timestamp<-if_else(baro$download_date == ymd("2018-01-13"), 
-                        baro$Timestamp + hours(6), 
+                        baro$Timestamp + hours(5), 
                         baro$Timestamp)
 baro$Timestamp<-if_else(baro$download_date == ymd("2018-03-04"), 
                         baro$Timestamp + days(1) + hours(5), 
@@ -300,6 +293,7 @@ source("functions/dygraph_ts_fun.R")
 source("functions/waterDepth_fun.R")
 source("functions/baro_fun.R")
 source("functions/db_get_ts.R")
+source("functions/offset_fun.R")
 
 #4.1 BB Wetland Well Shallow--------------------------------------------------------
 #Identify well info
@@ -311,14 +305,23 @@ df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
+# #Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+force_diff[c(3,8)]<-5
+
 #Estimate water depth
 df<-waterDepth_fun(Timestamp = df$Timestamp, 
                    pressureAbsolute = df$pressureAbsolute, 
                    barometricPressure = df$barometricPressure, 
+                   download_date_ts = df$download_date,
+                   download_date_log = well_log$download_date,
                    start_date = well_log$start_date, 
                    end_date = well_log$end_date, 
-                   download_datetime = well_log$download_datetime)
+                   download_datetime = well_log$download_datetime, 
+                   force_diff = force_diff)
+
 #Plot
-df$waterHeight<-df$waterHeight*100
-dygraph_ts_fun(df)
+dygraph_ts_fun(df %>% 
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
 
