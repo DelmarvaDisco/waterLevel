@@ -4,6 +4,12 @@
 # Date: 16 April 2019
 # Purpose: Process PT Data collected across the Palmer Lab Delmarva wetland sites
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Note for next time [4/30/2019 19:42]-----------------------------------------------
+#There appears to be an issue at 2018-01-13.  Maybe one day off in the baro file? Anyway, this should be investigated 
+#thoroughly. IE Look through the log files you lasy asshole!
+
+#Also--Fix the mess of functins in the function file. Rename gauge_pressure_fun to waterDepth_fun...and more.
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #1.0 Setup Worskspace---------------------------------------------------------------
@@ -298,7 +304,7 @@ source("functions/db_get_ts.R")
 
 #4.1 BB Wetland Well Shallow--------------------------------------------------------
 #Identify well info
-well_log<-wells %>% filter(Site_Name=="TB Wetland Well Shallow") %>% na.omit()
+well_log<-wells %>% filter(Site_Name=="BB Wetland Well Shallow") %>% na.omit()
 
 #Download pressure data
 df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
