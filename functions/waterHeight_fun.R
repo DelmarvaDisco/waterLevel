@@ -4,8 +4,7 @@
 # Date: 29 April 2019
 # Purpose: Combine PT and Barometric data to estimate Gage Pressure 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-waterDepth_fun<-function(Timestamp, 
+waterHeight_fun<-function(Timestamp, 
                          pressureAbsolute, 
                          barometricPressure, 
                          download_date_ts,
@@ -158,7 +157,7 @@ waterDepth_fun<-function(Timestamp,
     arrange(Timestamp)
   
   #Assign well log to global env
-  assign('well_log',well_log, .GlobalEnv)
+  assign('h_report',well_log, .GlobalEnv)
   
   #Export df
   df

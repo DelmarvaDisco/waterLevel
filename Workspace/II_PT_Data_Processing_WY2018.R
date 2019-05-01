@@ -5,8 +5,7 @@
 # Purpose: Process PT Data collected across the Palmer Lab Delmarva wetland sites
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Note for next time [4/30/2019 19:42]-----------------------------------------------
-#In waterDepth_fun, elevate well_log to .GLobal Env
-#In waterDepth_fun, add manual overide for offset...
+#Create waterDepth using survey data
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #1.0 Setup Worskspace---------------------------------------------------------------
@@ -290,7 +289,7 @@ remove(list=ls()[ls()!='working_dir' &
 #Read custom R functions
 source("functions/download_fun.R")
 source("functions/dygraph_ts_fun.R")
-source("functions/waterDepth_fun.R")
+source("functions/waterHeight_fun.R")
 source("functions/baro_fun.R")
 source("functions/db_get_ts.R")
 source("functions/offset_fun.R")
@@ -310,7 +309,7 @@ force_diff<-rep(NA, nrow(well_log))
 force_diff[c(3,8)]<-5
 
 #Estimate water depth
-df<-waterDepth_fun(Timestamp = df$Timestamp, 
+df<-waterHeight_fun(Timestamp = df$Timestamp, 
                    pressureAbsolute = df$pressureAbsolute, 
                    barometricPressure = df$barometricPressure, 
                    download_date_ts = df$download_date,
@@ -320,8 +319,27 @@ df<-waterDepth_fun(Timestamp = df$Timestamp,
                    download_datetime = well_log$download_datetime, 
                    force_diff = force_diff)
 
-#Plot
+#Examine output
+h_report
 dygraph_ts_fun(df %>% 
                  mutate(waterHeight=waterHeight*100) %>%
                  select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
 
+
+
+# #Database insert function
+# t0<-Sys.time()
+# rodm2::db_insert_results_ts(db = db,
+#                             datavalues = df,
+#                             method = "waterdepth",
+#                             site_code = "BB Wetland Well Shallow",
+#                             processinglevel = "Raw data",
+#                             sampledmedium = "Liquid aqueous", # from controlled vocab
+#                             #actionby = "Nate",
+#                             #equipment_name = "10808360",
+#                             variables = list( # variable name CV term = list("colname", units = "CV units")
+#                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
+#                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
+# tf<-Sys.time()
+# tf-t0
+# 
