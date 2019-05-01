@@ -261,8 +261,8 @@ dygraph_ts_fun(baro)
 
 #Combine data from both baro loggers
 baro<-baro %>% 
-  mutate(Timestamp_5min = ceiling_date(Timestamp, "5 min")) %>% 
-  group_by(Timestamp) %>% 
+  mutate(Timestamp_15min = ceiling_date(Timestamp, "15 min")) %>% 
+  group_by(Timestamp_15min) %>% 
   summarise(QB_Baro = mean(QB_Baro, na.rm=T), 
             GR_Baro = mean(GR_Baro, na.rm=T)) %>%
   mutate(barometricPressure = rowMeans(select(.,QB_Baro, GR_Baro), na.rm=T))
