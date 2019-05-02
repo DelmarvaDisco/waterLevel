@@ -5,7 +5,7 @@
 # Purpose: Process PT Data collected across the Palmer Lab Delmarva wetland sites
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Note for next time [4/30/2019 19:42]-----------------------------------------------
-#Create waterDepth using survey data
+#Create waterDepth_fun using survey data
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #1.0 Setup Worskspace---------------------------------------------------------------
@@ -30,9 +30,10 @@ library(tidyverse)
 #Read custom R functions
 source("functions/download_fun.R")
 source("functions/dygraph_ts_fun.R")
-source("functions/zipper_fun.R")
 source("functions/waterHeight_fun.R")
-source("functions/waterDepth_fun.R")
+source("functions/baro_fun.R")
+source("functions/db_get_ts.R")
+source("functions/offset_fun.R")
 
 #Define working dir
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
@@ -284,7 +285,7 @@ remove(list=ls()[ls()!='working_dir' &
                    ls()!='wells'])
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#4.0 Estimate Surface Water Level --------------------------------------------------
+#4.0 Estimate Shallow Ground Water Level -------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Read custom R functions
 source("functions/download_fun.R")
@@ -294,9 +295,13 @@ source("functions/baro_fun.R")
 source("functions/db_get_ts.R")
 source("functions/offset_fun.R")
 
+#Create list of sites
+site_names<-unique(wells$Site_Name[grep("Upland",wells$Site_Name)])
+site_names<-site_names[order(site_names)]
+
 #4.1 BB Wetland Well Shallow--------------------------------------------------------
 #Identify well info
-well_log<-wells %>% filter(Site_Name=="BB Wetland Well Shallow") %>% na.omit()
+well_log<-wells %>% filter(Site_Name=="BB Upland Well 1") %>% na.omit()
 
 #Download pressure data
 df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
@@ -304,9 +309,9 @@ df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
-# #Define minor offsets
+#Define minor offsets
 force_diff<-rep(NA, nrow(well_log))
-force_diff[c(3,8)]<-5
+force_diff[c(5)]<-5
 
 #Estimate water depth
 df<-waterHeight_fun(Timestamp = df$Timestamp, 
@@ -317,9 +322,9 @@ df<-waterHeight_fun(Timestamp = df$Timestamp,
                    start_date = well_log$start_date, 
                    end_date = well_log$end_date, 
                    download_datetime = well_log$download_datetime, 
-                   force_diff = force_diff)
+                   force_diff)
 
-#Examine output
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
 h_report
 dygraph_ts_fun(df %>% 
                  mutate(waterHeight=waterHeight*100) %>%
@@ -342,4 +347,3 @@ dygraph_ts_fun(df %>%
 #                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 # tf<-Sys.time()
 # tf-t0
-# 
