@@ -14,6 +14,7 @@ offset_fun<-function(df, download, path, offset){
   
   #Remove offset
   ts$Timestamp<-ts$Timestamp+offset
+  ts$download_date = download
   
   #Bind rows and reorder
   df<-bind_rows(df,ts) %>%

@@ -7,6 +7,7 @@
 waterHeight_fun<-function(Timestamp, 
                          pressureAbsolute, 
                          barometricPressure, 
+                         temp,
                          download_date_ts,
                          download_date_log,
                          start_date, 
@@ -16,7 +17,7 @@ waterHeight_fun<-function(Timestamp,
   
   #Organize workspace~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   #Create tibble with ts
-  df<-tibble(Timestamp, pressureAbsolute, barometricPressure, download_date = download_date_ts)
+  df<-tibble(Timestamp, pressureAbsolute, barometricPressure, temp, download_date = download_date_ts)
   
   #If offset dosn't exist
   if(length(force_diff)==0){
@@ -123,7 +124,7 @@ waterHeight_fun<-function(Timestamp,
       #filter to download date
       filter(download_date == well_log$download_date) %>%
       #Select relevant collumns
-      select(Timestamp, barometricPressure, pressureAbsolute) 
+      select(Timestamp, barometricPressure, pressureAbsolute, temp) 
     
     #Define offseet
     if(!is.na(well_log$force_diff)){
