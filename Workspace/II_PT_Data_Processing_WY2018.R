@@ -358,7 +358,7 @@ depths<-waterDepth_fun(
 df$waterDepth = df$waterHeight + mean(depths$offset[2:4])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Plot for funzies
@@ -445,7 +445,7 @@ depths<-waterDepth_fun(
 df$waterDepth = df$waterHeight + mean(depths$offset[1:4])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Plot for funzies
@@ -532,7 +532,7 @@ depths<-waterDepth_fun(
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1,2,5,6)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Plot for funzies
@@ -634,7 +634,7 @@ depths<-waterDepth_fun(
 df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove pre-deployment 
@@ -739,7 +739,7 @@ depths<-waterDepth_fun(
 df$waterDepth = df$waterHeight + mean(depths$offset[1])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1001,7 +1001,7 @@ depths<-waterDepth_fun(
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:5)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1098,7 +1098,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:6)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1195,7 +1195,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:6)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1284,7 +1284,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:6)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1373,7 +1373,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:4)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1467,7 +1467,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(2,3,5)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1564,7 +1564,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:5)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1655,7 +1655,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:2)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1747,7 +1747,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -1836,7 +1836,7 @@ depths
 df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
 
 #Water Level [datum = wetland invert]
-df$waterLevel = df$waterDepth - depths$offset[depths$event=="survey_upland_well"] 
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
