@@ -3719,6 +3719,37 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
+#5.20 GN and GR Wetland Wells Shallow-------------------------------------------------------
+#GN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+t0<-Sys.time()
+df<-readxl::read_xlsx(paste0(working_dir,"USDA_JacksonLane/Data_JacksonLane.xlsx")) %>%
+    rename(Timestamp = Date) %>% select(Timestamp, JNAT_sw) %>% na.omit()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = "GN Wetland Well Shallow",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "JNAT_sw", units = "Meter")))
+tf<-Sys.time()
+tf-t0
+
+#GR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+t0<-Sys.time()
+df<-readxl::read_xlsx(paste0(working_dir,"USDA_JacksonLane/Data_JacksonLane.xlsx")) %>%
+  rename(Timestamp = Date) %>% select(Timestamp, JRES_sw) %>% na.omit()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = "GN Wetland Well Shallow",
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "JRES_sw", units = "Meter")))
+tf<-Sys.time()
+tf-t0
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #6.0 Estimate Catchment Outlet Water Levels-----------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
