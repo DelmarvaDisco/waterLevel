@@ -1916,7 +1916,7 @@ depths<-waterDepth_fun(
   #from well log
   download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
   #from survey file
-  surveyDate = survey_temp$Date, 
+  surveyDate = NA, 
   waterDepth = NA,
   wellHeight = NA)
 depths
@@ -3723,7 +3723,7 @@ tf-t0
 #GN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 t0<-Sys.time()
 df<-readxl::read_xlsx(paste0(working_dir,"USDA_JacksonLane/Data_JacksonLane.xlsx")) %>%
-    rename(Timestamp = Date) %>% select(Timestamp, JNAT_sw) %>% na.omit()
+    rename(Timestamp = Date, waterDepth = JNAT_sw) %>% select(Timestamp, waterDepth) %>% na.omit()
 rodm2::db_insert_results_ts(db = db,
                             datavalues = df,
                             method = "waterdepth",
@@ -3731,22 +3731,24 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             variables = list( # variable name CV term = list("colname", units = "CV units")
-                              "waterDepth" = list(column = "JNAT_sw", units = "Meter")))
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "waterLevel" = list(column = "waterDepth", units = "Meter")))
 tf<-Sys.time()
 tf-t0
 
 #GR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 t0<-Sys.time()
 df<-readxl::read_xlsx(paste0(working_dir,"USDA_JacksonLane/Data_JacksonLane.xlsx")) %>%
-  rename(Timestamp = Date) %>% select(Timestamp, JRES_sw) %>% na.omit()
+  rename(Timestamp = Date, waterDepth = JRES_sw) %>% select(Timestamp, waterDepth) %>% na.omit()
 rodm2::db_insert_results_ts(db = db,
                             datavalues = df,
                             method = "waterdepth",
-                            site_code = "GN Wetland Well Shallow",
+                            site_code = "GR Wetland Well Shallow",
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             variables = list( # variable name CV term = list("colname", units = "CV units")
-                              "waterDepth" = list(column = "JRES_sw", units = "Meter")))
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "waterLevel" = list(column = "waterDepth", units = "Meter")))
 tf<-Sys.time()
 tf-t0
 
