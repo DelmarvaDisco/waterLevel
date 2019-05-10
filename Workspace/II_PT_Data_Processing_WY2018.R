@@ -9,7 +9,13 @@
 #Check into jump in BB at 7/24/2018
 #CHeck abnormal jump in ND sites on 2/10. Did I rehang them then?
 #Water level Estimate for DF, JA, JC
-#SEars Sites
+#Sears Sites
+
+#More Notes 5/9
+#Gregout 4/16? Maybe merge with Dogbone outlet?
+#Jones Road South.  Find missing summer files. 
+#Did I rehang Tiger Paw Out on 12/20
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #1.0 Setup Worskspace---------------------------------------------------------------
@@ -3755,120 +3761,722 @@ tf-t0
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #6.0 Estimate Catchment Outlet Water Levels-----------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# #Clean up workspace
-# remove(list=ls()[ls()!='working_dir' &
-#                    ls()!='db' &
-#                    ls()!='files' & 
-#                    ls()!='survey' & 
-#                    ls()!='wells'])
+#Clean up workspace
+remove(list=ls()[ls()!='working_dir' &
+                   ls()!='db' &
+                   ls()!='files' &
+                   ls()!='survey' &
+                   ls()!='wells'])
+
+#Read custom R functions
+source("functions/download_fun.R")
+source("functions/dygraph_ts_fun.R")
+source("functions/waterHeight_fun.R")
+source("functions/waterDepth_fun.R")
+source("functions/baro_fun.R")
+source("functions/db_get_ts.R")
+source("functions/offset_fun.R")
+
+#Create list of sites
+site_names<-unique(wells$Site_Name[grep("Catchment",wells$Site_Name)])
+site_names<-site_names[order(site_names)]
 # 
-# #Read custom R functions
-# source("functions/download_fun.R")
-# source("functions/dygraph_ts_fun.R")
-# source("functions/waterHeight_fun.R")
-# source("functions/waterDepth_fun.R")
-# source("functions/baro_fun.R")
-# source("functions/db_get_ts.R")
-# source("functions/offset_fun.R")
-# 
-# #Create list of sites
-# site_names<-unique(wells$Site_Name[grep("Catchment",wells$Site_Name)])
-# site_names<-site_names[order(site_names)]
-# 
-# # [1]            "Dogbone Catchment Outlet"         
-# # [3] "DV Catchment Outlet"               "Greg Catchment Outlet"            
+#              
 # # [5] "Jones Road North Catchment Outlet" "Jones Road South Catchment Outlet"
 # # [7] "Mikey Likey Catchment Outlet"      "Solute Catchment Outlet"          
 # # [9] "Tiger Paw Catchment Outlet"        "Tracer Catchment Outlet" 
 # 
-# #6.1 Denver Catchment Outlet--------------------------------------------------------
-# #Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# #Identify site and survey data
-# site<-"Denver Catchment Outlet"
-# 
-# #Identify well info
-# well_log<-wells %>% filter(Site_Name==site) %>% na.omit()
-# 
-# #Download pressure data
-# df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
-# 
-# #Offset March download by atleast 1 day
-# df<-df %>% mutate(download_date = if_else(download_date == ymd("2018-03-04"), 
-#                                           ymd("2018-03-05"),
-#                                           download_date))
-# df<-offset_fun(df, 
-#                download = ymd("2018-03-05"), 
-#                path = paste0(working_dir,well_log$path[well_log$download_date=="2018-03-05"]), 
-#                offset = hours(24))
-# 
-# #Plot for funzies
-# dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
-# 
-# #Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# #Estimate barometric pressure
-# df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
-# 
-# #Define minor offsets
-# force_diff<-rep(NA, nrow(well_log))
-# force_diff[3:7]<- 0
-# force_diff[3:7]<- -1
-# 
-# #Estimate water depth
-# df<-waterHeight_fun(Timestamp = df$Timestamp, 
-#                     pressureAbsolute = df$pressureAbsolute, 
-#                     barometricPressure = df$barometricPressure, 
-#                     temp = df$temp,
-#                     download_date_ts = df$download_date,
-#                     download_date_log = well_log$download_date,
-#                     start_date = well_log$start_date, 
-#                     end_date = well_log$end_date, 
-#                     download_datetime = well_log$download_datetime, 
-#                     force_diff = force_diff)
-# 
-# #Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
-# h_report
-# dygraph_ts_fun(df %>% 
-#                  mutate(waterHeight=waterHeight*100) %>%
-#                  select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
-# 
-# #Estimate water depth and water level 
-# depths<-waterDepth_fun(
-#   #from working df
-#   Timestamp = df$Timestamp, waterHeight = df$waterHeight,
-#   #from well log
-#   download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m, 
-#   #from survey file
-#   surveyDate = NA, #survey_temp$Date, 
-#   waterDepth = NA, #survey_temp$`Water Depth (m)`, 
-#   wellHeight = NA)
-# depths
-# 
-# #Water depth
-# df$waterDepth = df$waterHeight + mean(depths$offset[2:4])
-# 
-# #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# #Remove NA 
-# df<-na.omit(df)
-# 
-# #Plot for funzies
-# dygraph_ts_fun(df %>% 
-#                  mutate(waterDepth=waterDepth*100+1000) %>%
-#                  select(Timestamp, waterDepth))
-# 
-# #Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# #Database insert function
-# t0<-Sys.time()
-# rodm2::db_insert_results_ts(db = db,
-#                             datavalues = df,
-#                             method = "waterdepth",
-#                             site_code = site,
-#                             processinglevel = "Raw data",
-#                             sampledmedium = "Liquid aqueous", # from controlled vocab
-#                             #actionby = "Nate",
-#                             #equipment_name = "10808360",
-#                             variables = list( # variable name CV term = list("colname", units = "CV units")
-#                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
-#                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
-#                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
-# tf<-Sys.time()
-# tf-t0
+#6.1 Denver Catchment Outlet--------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Denver Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Offset March download by atleast 1 day
+df<-df %>% mutate(download_date = if_else(download_date == ymd("2018-03-04"),
+                                          ymd("2018-03-05"),
+                                          download_date))
+df<-offset_fun(df,
+               download = ymd("2018-03-05"),
+               path = paste0(working_dir,well_log$path[well_log$download_date=="2018-03-05"]),
+               offset = hours(24))
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+force_diff<-c(0,0,-1,-1,-1,-1,-1)
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[3:5])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#6.2 Greg Catchment Outlet----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Greg Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+force_diff<-c(-1, 5, 5, 5)
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#6.3 Dogbone Catchment Outlet-------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Dogbone Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+#force_diff<-c(-1, 5, 5, 5)
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#6.4 Jones Road North Catchment Outlet-------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Jones Road North Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Offset March download by atleast 1 day
+df<-df %>% mutate(download_date = if_else(download_date == ymd("2018-03-04"),
+                                          ymd("2018-03-05"),
+                                          download_date))
+df<-offset_fun(df,
+               download = ymd("2018-03-05"),
+               path = paste0(working_dir,well_log$path[well_log$download_date=="2018-03-05"]),
+               offset = hours(24))
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+force_diff<-c(0, 0, -1, -1,-1,-1,-1)
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[2:5])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#6.5 Jones Road South Catchment Outlet-------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Jones Road South Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Offset March download by atleast 1 day
+df<-df %>% mutate(download_date = if_else(download_date == ymd("2018-03-04"),
+                                          ymd("2018-03-05"),
+                                          download_date))
+df<-offset_fun(df,
+               download = ymd("2018-03-05"),
+               path = paste0(working_dir,well_log$path[well_log$download_date=="2018-03-05"]),
+               offset = hours(24))
+
+#Change download date for december 12
+df<-df %>% 
+  mutate(download_date = if_else(download_date==ymd("2017-12-12"), 
+                                 ymd("2017-12-20"), 
+                                 download_date))
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+force_diff<-c(0, 24,-19,5,5,5)
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[2:5])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#6.6 Mikey Likey Catchment Outlet-------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Mikey Likey Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Change download date for jan 04
+df<-df %>% 
+  mutate(download_date = if_else(download_date==ymd("2018-01-04"), 
+                                 ymd("2018-02-10"), 
+                                 download_date))
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+force_diff<-c(-1,-1,-1,-1,-1)
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#6.7 Solute Catchment Outlet--------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Solute Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Offset March download by atleast 1 day
+df<-df %>% mutate(download_date = if_else(download_date == ymd("2018-03-04"),
+                                          ymd("2018-03-05"),
+                                          download_date))
+df<-offset_fun(df,
+               download = ymd("2018-03-05"),
+               path = paste0(working_dir,well_log$path[well_log$download_date=="2018-03-05"]),
+               offset = hours(24))
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+force_diff<-c(0,0,-1,-1,-1,-1)
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[1:4])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+#6.8 Tiger Paw Catchment Outlet--------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"Tiger Paw Catchment Outlet"
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) 
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows()
+
+#Plot for funzies
+dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp,
+                    pressureAbsolute = df$pressureAbsolute,
+                    barometricPressure = df$barometricPressure,
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date,
+                    end_date = well_log$end_date,
+                    download_datetime = well_log$download_datetime,
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>%
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m,
+  #from survey file
+  surveyDate = NA, #survey_temp$Date,
+  waterDepth = NA, #survey_temp$`Water Depth (m)`,
+  wellHeight = NA)
+depths
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[3:5])
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Remove NA
+df<-na.omit(df)
+
+#Plot for funzies
+dygraph_ts_fun(df %>%
+                 mutate(waterDepth=waterDepth*100+1000) %>%
+                 select(Timestamp, waterDepth))
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
