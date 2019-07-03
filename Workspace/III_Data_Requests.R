@@ -90,3 +90,50 @@ MW<-MW %>%
   spread(site,waterLevel)
 
 write.csv(MW,paste0(working_dir,"4Michael.csv"))
+
+#Sangchul-----------------------------------------------------------------------
+#Obtain data from all surface water weltand wells~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ars<-sites %>% filter(str_detect(site_code,"Wetland Well Shallow")) %>% as.matrix(.)
+
+#Download Data
+ars<-lapply(ars, fun) %>% bind_rows(.)
+
+#Sort Data
+ars<-ars %>% 
+  mutate(Timestamp = floor_date(Timestamp, "15 min")) %>% 
+  group_by(site, Timestamp) %>% distinct(.) %>%
+  summarise(waterLevel=mean(waterLevel)) %>% 
+  spread(site,waterLevel)
+
+write.csv(ars,paste0(working_dir,"4Sangchul.csv"))
+
+#Obtain data from all upland water weltand wells~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ars<-sites %>% filter(str_detect(site_code, "Upland")) %>% as.matrix(.)
+
+fun<-function(site, 
+              start_date = mdy("10-1-2017"), 
+              end_date = mdy("9-30-2018")){
+  #download data
+  temp<-db_get_ts(db, paste(site), "waterDepth", start_date, end_date) %>% as_tibble(.)
+  
+  #add site collumn
+  colnames(temp)<-c("Timestamp", "waterDepth")
+  temp$site = paste(site)
+  
+  #Export to .GlovalEnv
+  temp 
+}
+
+#Download Data
+ars<-lapply(ars, fun) %>% bind_rows(.)
+
+#Sort Data
+ars<-ars %>% 
+  mutate(Timestamp = floor_date(Timestamp, "15 min")) %>% 
+  group_by(site, Timestamp) %>% distinct(.) %>%
+  summarise(waterDepth=mean(waterDepth)) %>% 
+  spread(site,waterDepth)
+
+#export
+write.csv(ars,paste0(working_dir,"4Sangchul.csv"))
+
