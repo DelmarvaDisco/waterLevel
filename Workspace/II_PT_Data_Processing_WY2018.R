@@ -1,10 +1,10 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Name: Initial PT Data Processing
 # Coder: C. Nathan Jones
 # Date: 16 April 2019
 # Purpose: Process PT Data collected across the Palmer Lab Delmarva wetland sites
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Note for next time [4/30/2019 19:42]-----------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Note for next time [4/30/2019 19:42]-------------------------------------------
 #Check into jump at DK on  10/6/2018 -- I think I changed the fihsing line here
 #Check into jump in BB at 7/24/2018
 #CHeck abnormal jump in ND sites on 2/10. Did I rehang them then?
@@ -17,9 +17,9 @@
 #Did I rehang Tiger Paw Out on 12/20
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#1.0 Setup Worskspace---------------------------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#1.0 Setup Worskspace-----------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #clear environment
 remove(list=ls())
 
@@ -28,9 +28,9 @@ library(xts)
 library(dygraphs)
 library(parallel)
 library(devtools)
-devtools::install_github("khondula/rodm2")
 library(RSQLite)
 library(DBI)
+devtools::install_github("khondula/rodm2")
 library(rodm2)
 library(zoo)
 library(lubridate)
@@ -57,10 +57,10 @@ db<-dbConnect(RSQLite::SQLite(),"//nfs/palmer-group-data/Choptank/Nate/PT_Data/c
 #Download survey data 
 survey<-read_csv(paste0(working_dir,"survey_data/survey_V1.csv"))
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#2.0 Create lookup table for PT data files------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#2.1 Compile a list of file paths---------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#2.0 Create lookup table for PT data files--------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#2.1 Compile a list of file paths-----------------------------------------------
 #Identify files with HOBO export files
 files<-list.files(working_dir, recursive = T)
 files<-files[substr(files,nchar(files)-2,nchar(files))=="csv"] 
@@ -68,6 +68,11 @@ files<-files[grep(files,pattern = "export")]
 
 #Remove non-relevant files 
 files<-files[-grep(files,pattern = 'archive')]
+files<-files %>%
+  enframe(name = NULL) %>% 
+  filter(str_detect(value,"2017") |
+         str_detect(value,"2018")) %>%
+  as.matrix(.)
 
 #Create function to retrieve info from each file
 file_fun<-function(n){
@@ -123,11 +128,17 @@ file_fun<-function(n){
 files<-mclapply(X = seq(1,length(files)), FUN = file_fun, mc.cores = detectCores())
 files<-bind_rows(files)
 
-#2.2 Compile well log information---------------------------------------------------
+#2.2 Compile well log information-----------------------------------------------
 #Create list of file paths
 wells<-list.files(working_dir, recursive = T)
 wells<-wells[grep(wells,pattern = 'well_log')]
 wells<-wells[-grep(wells,pattern = 'archive')]
+wells<-wells %>%
+  enframe(name = NULL) %>% 
+  filter(str_detect(value,"2017") |
+           str_detect(value,"2018")) %>%
+  filter(!str_detect(value, "20181113")) %>%
+  as.matrix(.)
 
 #Create function to download well log files
 log_fun<-function(n){
@@ -192,10 +203,10 @@ files<-files %>%
 #join to master lookup table!
 wells<-left_join(wells, files) 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#3.0 Compile Barometric Pressure Logger Info----------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Gather data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#3.0 Compile Barometric Pressure Logger Info------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Gather data~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Define Baro Loggers
 baro_id<-c("10589038", #QB Baro
            "10808360") #GR Baro
@@ -215,7 +226,7 @@ baro<-baro %>%
   #Remove na's
   na.omit()
 
-#Manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #QB Baro Logger
 baro_files %>% filter(Site_Name == "QB Baro") 
 baro$Timestamp<-if_else(baro$download_date == ymd("2018-01-13"), 
@@ -249,7 +260,7 @@ baro$Timestamp<-if_else(baro$Sonde_ID == "10808360" & baro$download_date == ymd(
                         baro$Timestamp - hours(1), 
                         baro$Timestamp) 
 
-#Combine datasets and upload!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Combine datasets and upload!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Create seperate collumns for each logger
 baro<-baro %>%
   select(Timestamp, barometricPressure, Sonde_ID) %>% 
@@ -271,7 +282,7 @@ baro<-baro %>%
   mutate(barometricPressure = rowMeans(select(.,QB_Baro, GR_Baro), na.rm=T)) %>%
   rename(Timestamp=Timestamp_15min)
 
-#DB Upload~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#DB Upload~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Insert barometric pressure data into db
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -280,8 +291,6 @@ rodm2::db_insert_results_ts(db = db,
                             site_code = "BARO",
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
-                            #actionby = "Nate",
-                            #equipment_name = "10808360",
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "barometricPressure" = list(column = "barometricPressure", units = "Kilopascal")))
 tf<-Sys.time()
@@ -290,13 +299,13 @@ tf-t0
 #Clean up workspace
 remove(list=ls()[ls()!='working_dir' &
                    ls()!='db' &
-                   ls()!='files' & 
-                   ls()!='survey' & 
+                   ls()!='files' &
+                   ls()!='survey' &
                    ls()!='wells'])
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#4.0 Estimate Shallow Ground Water Level -------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.0 Estimate Shallow Ground Water Level ---------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Read custom R functions
 source("functions/download_fun.R")
 source("functions/dygraph_ts_fun.R")
@@ -311,8 +320,8 @@ site_names<-unique(wells$Site_Name[grep("Upland",wells$Site_Name)])
 site_names<-site_names[order(site_names)]
 site_names[grep("Upland", site_names)]
 
-#4.1 BB Wetland Well Shallow--------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.1 BB Wetland Well Shallow----------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"BB Upland Well 1"
 survey_temp<-survey %>% filter(Wetland == "BB")
@@ -323,7 +332,7 @@ well_log<-wells %>% filter(Site_Name==site) %>% na.omit()
 #Download pressure data
 df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -366,7 +375,7 @@ df$waterDepth = df$waterHeight + mean(depths$offset[2:4])
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
-#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Plot for funzies
 dygraph_ts_fun(df %>% 
                  mutate(waterDepth=waterDepth*100+1000) %>%
@@ -380,7 +389,7 @@ df<-df %>% filter(Timestamp>mdy("12-1-2017"))
 
 #Potential disturbance at 7/24/2018(?)
 
-#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Database insert function
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -390,7 +399,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -398,8 +407,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.2 DB Upland Well 1---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.2 DB Upland Well 1-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"DB Upland Well 1"
 survey_temp<-survey %>% filter(Wetland == "DB")
@@ -410,7 +419,7 @@ well_log<-wells %>% filter(Site_Name==site) %>% na.omit()
 #Download pressure data
 df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -453,7 +462,7 @@ df$waterDepth = df$waterHeight + mean(depths$offset[1:4])
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
-#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Plot for funzies
 dygraph_ts_fun(df %>% 
                  mutate(waterDepth=waterDepth*100+1000) %>%
@@ -467,7 +476,7 @@ df<-df %>% filter(Timestamp>mdy("12-1-2017"))
 
 #Potential disturbance at 7/24/2018(?)
 
-#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Database insert function
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -477,7 +486,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -485,8 +494,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.3 DK Upland Well 1---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.3 DK Upland Well 1-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"DK Upland Well 1"
 survey_temp<-survey %>% filter(Wetland == "DK")
@@ -497,7 +506,7 @@ well_log<-wells %>% filter(Site_Name==site) %>% na.omit()
 #Download pressure data
 df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -540,7 +549,7 @@ df$waterDepth = df$waterHeight + mean(depths$offset[c(1,2,5,6)])
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
-#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Plot for funzies
 dygraph_ts_fun(df %>% 
                  mutate(waterDepth=waterDepth*100+1000) %>%
@@ -563,7 +572,7 @@ df<-df %>%
 
 #Potential disturbance at 7/24/2018(?)
 
-#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Database insert function
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -573,7 +582,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -581,8 +590,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.4 DK Upland Well 2---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.4 DK Upland Well 2-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"DK Upland Well 2"
 survey_temp<-survey %>% filter(Wetland == "DK")
@@ -599,7 +608,7 @@ df<-df %>%
                                 ymd("2018-02-10"), 
                                 download_date))
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -642,7 +651,7 @@ df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
-#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove pre-deployment 
 df<-df %>% filter(Timestamp>mdy("8-18-2017"))
 
@@ -669,7 +678,7 @@ dygraph_ts_fun(df %>%
                  mutate(waterDepth=waterDepth*100+1000) %>%
                  select(Timestamp, waterDepth))
 
-#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Database insert function
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -679,7 +688,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -687,8 +696,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.5 GN Upland Well 1---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.5 GN Upland Well 1-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"GN Upland Well 1"
 survey_temp<-survey %>% filter(Wetland == "GN")
@@ -705,7 +714,7 @@ df<-df %>%
                                  ymd("2018-02-10"), 
                                  download_date))
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -747,7 +756,7 @@ df$waterDepth = df$waterHeight + mean(depths$offset[1])
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
-#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
 df<-na.omit(df)
 
@@ -756,7 +765,7 @@ dygraph_ts_fun(df %>%
                  mutate(waterDepth=waterDepth*100+1000) %>%
                  select(Timestamp, waterDepth))
 
-#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Database insert function
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -766,7 +775,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -774,8 +783,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.6 GR Upland Well 1---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.6 GR Upland Well 1-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"GR Upland Well 1"
 survey_temp<-survey %>% filter(Wetland == "GR")
@@ -792,7 +801,7 @@ df<-df %>%
                                 ymd("2018-04-09"), 
                                 download_date))
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -850,7 +859,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               #"waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -859,8 +868,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.7 GR Upland Well 2---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.7 GR Upland Well 2-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"GR Upland Well 2"
 survey_temp<-survey %>% filter(Wetland == "GR")
@@ -877,7 +886,7 @@ df<-df %>%
                                 ymd("2018-04-09"), 
                                 download_date))
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -935,7 +944,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               #"waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -944,8 +953,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.8 JB Upland Well 1---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.8 JB Upland Well 1-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"JB Upland Well 1"
 survey_temp<-survey %>% filter(Wetland == "JB")
@@ -966,7 +975,7 @@ df<-offset_fun(df,
                offset = hours(24))
 dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -1031,7 +1040,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1040,8 +1049,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.9 JB Upland Well 2---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.9 JB Upland Well 2-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"JB Upland Well 2"
 survey_temp<-survey %>% filter(Wetland == "JB")
@@ -1062,7 +1071,7 @@ df<-offset_fun(df,
                offset = hours(24))
 dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -1128,7 +1137,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1137,8 +1146,8 @@ rodm2::db_insert_results_ts(db = db,
 tf<-Sys.time()
 tf-t0
 
-#4.10 JC Upland Well 1---------------------------------------------------------------
-#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.10 JC Upland Well 1----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Identify site and survey data
 site<-"JC Upland Well 1"
 survey_temp<-survey %>% filter(Wetland == "JB")
@@ -1159,7 +1168,7 @@ df<-offset_fun(df,
                offset = hours(24))
 dygraph_ts_fun(df %>% select(Timestamp, pressureAbsolute))
 
-#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate barometric pressure
 df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
@@ -1225,7 +1234,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1314,7 +1323,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1400,7 +1409,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1497,7 +1506,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1594,7 +1603,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1685,7 +1694,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1774,7 +1783,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1866,7 +1875,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
@@ -1952,7 +1961,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2062,7 +2071,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2149,7 +2158,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2244,7 +2253,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2331,7 +2340,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2423,7 +2432,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2513,7 +2522,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2608,7 +2617,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2702,7 +2711,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2797,7 +2806,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2891,7 +2900,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -2983,7 +2992,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3077,7 +3086,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3164,7 +3173,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3259,7 +3268,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3359,7 +3368,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3454,7 +3463,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3537,7 +3546,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3620,7 +3629,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3717,7 +3726,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
@@ -3869,7 +3878,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3950,7 +3959,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -4031,7 +4040,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -4121,7 +4130,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -4196,7 +4205,7 @@ depths<-waterDepth_fun(
 depths
 
 #Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[2:5])
+df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -4208,6 +4217,17 @@ dygraph_ts_fun(df %>%
                  select(Timestamp, waterDepth))
 
 #Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+db_describe_equipment(db, 
+                      equip_name    =   paste(well_log$Sonde_ID[1]), 
+                      serial_no     =   well_log$Sonde_ID[1],
+                      model_name    =   "U20 Pressure Transducer",
+                      vendor        =   "Onset",
+                      manufacturer  =   "HOBO",
+                      equipment_type=   "pressureTransducer",
+                      owner_first   =   "Margaret",
+                      owner_last    =   "Palmer",
+                      owner_email   =   "mpalmer@sesync.org")
+
 #Database insert function
 t0<-Sys.time()
 rodm2::db_insert_results_ts(db = db,
@@ -4217,7 +4237,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -4304,7 +4324,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -4394,7 +4414,7 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -4474,9 +4494,13 @@ rodm2::db_insert_results_ts(db = db,
                             processinglevel = "Raw data",
                             sampledmedium = "Liquid aqueous", # from controlled vocab
                             #actionby = "Nate",
-                            #equipment_name = "10808360",
+                            equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
 tf-t0
+
+
+#7.0 Fin------------------------------------------------------------------------
+dbDisconnect(db)
