@@ -3384,6 +3384,9 @@ depths
 #Define depth offset
 df$offset<- mean(depths$offset[c(7)])
 
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
+
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
 df<-na.omit(df)
