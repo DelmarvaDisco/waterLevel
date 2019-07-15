@@ -1,5 +1,5 @@
 waterDepth_fun<-function(#db information
-                         db = NULL,
+                         db = db,
                          site = site, 
                          #from working df
                          Timestamp, 
@@ -65,5 +65,5 @@ waterDepth_fun<-function(#db information
   
   #Export to global environment~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   output
-  
+
 }
