@@ -211,8 +211,31 @@ wells<-left_join(wells, files)
 baro_id<-c("10589038", #QB Baro
            "10808360") #GR Baro
 
-#Define Baro Logger Files
-baro_files<-wells[wells$Sonde_ID %in% baro_id,] %>% filter(!is.na(path))
+#Create log file for baro loggers
+baro_log<-list.files(working_dir, recursive = T) %>%
+  enframe(name=NULL) %>%
+  filter(str_detect(value, "well_log")) %>%
+  filter(!str_detect(value, 'archive')) %>%
+  as.matrix(.)
+log_fun<-function(n){read_csv(paste0(working_dir,baro_log[n]))}
+baro_log<-mclapply(X = seq(1,length(baro_log)), FUN = log_fun) %>% 
+  bind_rows() %>% 
+  filter(Sonde_ID %in% baro_id)
+
+#Create list of baro files
+files<-list.files(working_dir, recursive = T) %>%
+  enframe(name=NULL) %>%
+  filter(str_detect(value, 'csv')) %>%
+  filter(str_detect(value, 'export')) %>%
+  filter(!str_detect(value, 'archive')) %>%
+  as.matrix(.)
+files<-mclapply(X = seq(1,length(files)), 
+                FUN = file_fun, 
+                mc.cores = detectCores()) %>%
+  bind_rows(.)  
+
+#merge baro_log and file lists
+baro_files<-left_join(baro_log, files)
 
 #run function
 baro<-mclapply(X = paste0(working_dir,baro_files$path), FUN = download_fun, mc.cores = detectCores()) %>% bind_rows()
@@ -228,7 +251,6 @@ baro<-baro %>%
 
 #Manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #QB Baro Logger
-baro_files %>% filter(Site_Name == "QB Baro") 
 baro$Timestamp<-if_else(baro$download_date == ymd("2018-01-13"), 
                         baro$Timestamp + hours(5), 
                         baro$Timestamp)
@@ -249,10 +271,6 @@ baro$Timestamp<-if_else(baro$download_date == ymd("2018-10-10"),
                         baro$Timestamp)
 
 #GR Baro Logger
-baro_files %>% 
-  filter(Site_Name == "GR Baro") %>% 
-  select(download_date, download_datetime, end_date) %>% 
-  mutate(diff = download_datetime - end_date)
 baro$Timestamp<-if_else(baro$Sonde_ID == "10808360" & baro$download_date == ymd("2018-06-24"), 
                         baro$Timestamp - hours(1), 
                         baro$Timestamp) 
@@ -307,13 +325,8 @@ remove(list=ls()[ls()!='working_dir' &
 #4.0 Estimate Shallow Ground Water Level ---------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Read custom R functions
-source("functions/download_fun.R")
-source("functions/dygraph_ts_fun.R")
-source("functions/waterHeight_fun.R")
-source("functions/waterDepth_fun.R")
-source("functions/baro_fun.R")
-source("functions/db_get_ts.R")
-source("functions/offset_fun.R")
+funs<-list.files("functions/", full.names = T)
+for(i in 1:length(funs)){source(funs[i]);print(paste(i,"-", funs[i]))}
 
 #Create list of sites
 site_names<-unique(wells$Site_Name[grep("Upland",wells$Site_Name)])
@@ -369,8 +382,11 @@ depths<-waterDepth_fun(
   waterDepth = NA, 
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[2:4])
+#Define depth offset
+df$offset<-mean(depths$offset[2:4])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -401,6 +417,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -456,8 +473,11 @@ depths<-waterDepth_fun(
   waterDepth = NA, 
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:4])
+#Define depth offset
+df$offset<- mean(depths$offset[1:4])
+  
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -488,6 +508,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -543,8 +564,11 @@ depths<-waterDepth_fun(
   waterDepth = NA,
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1,2,5,6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1,2,5,6)])
+  
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -584,6 +608,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -645,8 +670,11 @@ depths<-waterDepth_fun(
   waterDepth = NA,
   wellHeight = survey_temp$`Upland Well Height (m) - 2`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(2:6)])
+  
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -690,6 +718,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -750,8 +779,11 @@ depths<-waterDepth_fun(
   waterDepth = NA,
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1])
+#Define depth offset
+df$offset<- mean(depths$offset[1])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -777,6 +809,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -837,8 +870,11 @@ depths<-waterDepth_fun(
   waterDepth = NA,
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+#Define depth offset
+df$offset<- mean(depths$offset[1:2])
+  
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -861,6 +897,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               #"waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -922,8 +959,11 @@ depths<-waterDepth_fun(
   waterDepth = NA,
   wellHeight = survey_temp$`Upland Well Height (m) - 2`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+#Define depth offset
+df$offset<- mean(depths$offset[1:2])
+  
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -946,6 +986,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               #"waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1012,8 +1053,11 @@ depths<-waterDepth_fun(
   waterDepth = NA,
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1:5)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1:5)])
+  
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1042,6 +1086,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1109,8 +1154,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - 2`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1:6)])
+  
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1139,6 +1187,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1206,8 +1255,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1:6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1236,6 +1288,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1295,7 +1348,10 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 depths
 
-#Water depth
+#Define depth offset
+df$offset<- 0
+
+#Water depth [datum = ground surface]
 df$waterDepth = df$waterHeight + mean(depths$offset[c(1:6)])
 
 #Water Level [datum = wetland invert]
@@ -1325,6 +1381,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1384,8 +1441,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - 2`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1:4)])
+#Define depth offset
+df$offset<-  mean(depths$offset[c(1:4)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1411,6 +1471,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1478,8 +1539,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2,3,5)])
+#Define depth offset
+df$offset<-  mean(depths$offset[c(2,3,5)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1508,6 +1572,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1575,8 +1640,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - 2`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1:5)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1:5)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1605,6 +1673,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1666,8 +1735,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1:2)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1:2)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1696,6 +1768,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1758,8 +1831,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - 2`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(2:6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1785,6 +1861,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1847,8 +1924,11 @@ depths<-waterDepth_fun(
   wellHeight = survey_temp$`Upland Well Height (m) - 3`)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(2:6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
@@ -1877,6 +1957,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterLevel", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -1936,8 +2017,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2:4)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(2:4)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2014,7 +2098,7 @@ df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 #Define minor offsets
 force_diff<-rep(NA, nrow(well_log))
 force_diff[c(1:2)]<- 0
-force_diff[c(3:8)]<- 5
+force_diff[c(3:7)]<- 5
 
 #Estimate water depth
 df<-waterHeight_fun(Timestamp = df$Timestamp, 
@@ -2047,7 +2131,11 @@ depths<-waterDepth_fun(
 depths
 
 #Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[8])
+#Define depth offset
+df$offset<- mean(depths$offset[7])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2073,6 +2161,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2133,8 +2222,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[8])
+#Define depth offset
+df$offset<- mean(depths$offset[8])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2160,6 +2252,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2228,8 +2321,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[2:6])
+#Define depth offset
+df$offset<- mean(depths$offset[2:6])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2255,6 +2351,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2315,8 +2412,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[8])
+#Define depth offset
+df$offset<- mean(depths$offset[8])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2342,6 +2442,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2410,8 +2511,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[2:4])
+#Define depth offset
+df$offset<-mean(depths$offset[2:4])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2434,6 +2538,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2492,8 +2597,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
+#Define depth offset
+df$offset<-  mean(depths$offset[c(2:6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2524,6 +2632,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2592,8 +2701,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1,2,4,5)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1,2,4,5)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2619,6 +2731,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2686,8 +2799,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(1:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(1:6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2713,6 +2829,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2781,8 +2898,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(7)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(7)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2808,6 +2928,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2875,8 +2996,12 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(2:6)])
+
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2902,6 +3027,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -2970,8 +3096,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(3:5)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(3:5)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -2994,6 +3123,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3061,8 +3191,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(3:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(3:6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3088,6 +3221,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3148,8 +3282,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[8])
+#Define depth offset
+df$offset<- mean(depths$offset[8])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3175,6 +3312,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3243,8 +3381,8 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(7)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(7)])
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3270,6 +3408,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3343,8 +3482,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3370,6 +3512,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3438,8 +3581,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[2])
+#Define depth offset
+df$offset<- mean(depths$offset[2])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3465,6 +3611,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3524,8 +3671,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2,3,5)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(2,3,5)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3548,6 +3698,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3607,8 +3758,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(2:7)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(2:7)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3631,6 +3785,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3704,8 +3859,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[c(3:6)])
+#Define depth offset
+df$offset<- mean(depths$offset[c(3:6)])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA 
@@ -3728,6 +3886,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "waterLevel" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
@@ -3856,8 +4015,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[3:5])
+#Define depth offset
+df$offset<- mean(depths$offset[3:5])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -3880,6 +4042,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
@@ -3937,8 +4100,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+#Define depth offset
+df$offset<- mean(depths$offset[1:2])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -3961,6 +4127,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
@@ -4018,8 +4185,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+#Define depth offset
+df$offset<- mean(depths$offset[1:2])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -4042,6 +4212,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
@@ -4108,8 +4279,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[2:5])
+#Define depth offset
+df$offset<- mean(depths$offset[2:5])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -4132,6 +4306,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
@@ -4204,8 +4379,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+#Define depth offset
+df$offset<- mean(depths$offset[1:2])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -4239,6 +4417,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
@@ -4302,8 +4481,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:2])
+#Define depth offset
+df$offset<-  mean(depths$offset[1:2])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -4326,6 +4508,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
@@ -4392,8 +4575,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[1:4])
+#Define depth offset
+df$offset<- mean(depths$offset[1:4])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -4416,6 +4602,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
@@ -4472,8 +4659,11 @@ depths<-waterDepth_fun(
   wellHeight = NA)
 depths
 
-#Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[3:5])
+#Define depth offset
+df$offset<- mean(depths$offset[3:5])
+
+#Water depth [datum = ground surface]
+df$waterDepth = df$waterHeight + df$offset
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Remove NA
@@ -4496,6 +4686,7 @@ rodm2::db_insert_results_ts(db = db,
                             #actionby = "Nate",
                             equipment_name = paste(well_log$Sonde_ID[1]),
                             variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "offset"     = list(column = "offset",     units = "Meter"),
                               "waterDepth" = list(column = "waterDepth", units = "Meter"),
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
