@@ -1,6 +1,6 @@
 #http://odm2.github.io/ODM2/schemas/ODM2_Current/diagrams/ODM2Core.html
 
-db_get_equip_by_site(db, site_code, variable_code_CV, MethodCode){
+db_get_equip_by_site<-function(db, site_code, variable_code_CV){
   
   #Check if db is compatable
   if (!class(db) %in% c("SQLiteConnection")) {
@@ -30,18 +30,19 @@ db_get_equip_by_site(db, site_code, variable_code_CV, MethodCode){
                                       WHERE ActionID = :x", 
                                       params=list(x=ActionID[,1]))
     
-    #----------------
-    #From here, select the Equipment Name, then export to .global env
-    #-----------------
-    
+    #Equipment Name
+    EquipmentName<-RSQLite::dbGetQuery(db,
+                                       "SELECT EquipmentName 
+                                        FROM Equipment 
+                                        WHERE EquipmentID = :x", 
+                                       params=list(x=EquipmentID[,1]))
     
   }
   
-  #Clean up values df
-  colnames(Values)<-c("Timestamp", variable_code_CV)
+  #Create Export
+  output<- EquipmentName %>%
+    mutate(site_code = site_code)
   
-  #Export Values
-  Values %>% arrange(Timestamp)
-  
+  output
   
 }
