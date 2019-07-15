@@ -26,12 +26,8 @@ library(readxl)
 library(tidyverse)
 
 #Read custom R functions
-source("functions/download_fun.R")
-source("functions/dygraph_ts_fun.R")
-source("functions/waterHeight_fun.R")
-source("functions/baro_fun.R")
-source("functions/db_get_ts.R")
-source("functions/offset_fun.R")
+funs<-list.files("functions/", full.names = T)
+for(i in 1:length(funs)){source(funs[i]);print(paste(i,"-", funs[i]))}
 
 #Define working dir
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
@@ -57,13 +53,14 @@ files<-files[grep(files,pattern = "export")]
 #Select files to process
 files<-files %>% 
   enframe(name = NULL) %>% 
-  filter(str_detect(value,"20181113") |
+  filter(str_detect(value,"20181011") |
+         str_detect(value,"20181101") |
+         str_detect(value,"20181113") |
          str_detect(value,"20190315") |
          str_detect(value,"20190406") |  
          str_detect(value,"20190423") ) %>%
   filter(!str_detect(value, "archive")) %>%
   as.matrix(.)
-
 
 #Create function to retrieve info from each file
 file_fun<-function(n){
@@ -120,10 +117,21 @@ files<-mclapply(X = seq(1,length(files)), FUN = file_fun, mc.cores = detectCores
 files<-bind_rows(files)
 
 #2.2 Compile well log information-----------------------------------------------
+#2.2.a Gather Information-------------------------------------------------------
 #Create list of file paths
 wells<-list.files(working_dir, recursive = T)
 wells<-wells[grep(wells,pattern = 'well_log')]
 wells<-wells[-grep(wells,pattern = 'archive')]
+
+#Select files to process
+wells<-wells %>% 
+  enframe(name = NULL) %>% 
+  filter(str_detect(value,"20181113") |
+           str_detect(value,"20190315") |
+           str_detect(value,"20190406") |  
+           str_detect(value,"20190423") ) %>%
+  filter(!str_detect(value, "archive")) %>%
+  as.matrix(.)
 
 #Create function to download well log files
 log_fun<-function(n){
@@ -139,6 +147,46 @@ log_fun<-function(n){
 wells<-mclapply(X = seq(1,length(wells)), FUN = log_fun)
 wells<-bind_rows(wells)
 
+#2.2.b Check well logs for potential errors ------------------------------------
+#Create f(x) to scan for input Sonde_IDs that don't match values in DB~~~~~~~~~~
+check_fun<-function(n){
+  #identify Site_Name
+  site_name<-wells$Site_Name[n]
+  
+  #pull values from database
+  df<-db_get_equip_by_site(db, site_name, "waterDepth") %>%
+    rename(Site_Name = site_code, 
+           Sonde_ID = EquipmentName)
+  
+  #prep wells id vals
+  temp<-wells %>% 
+    select(Site_Name, Sonde_ID, Date) %>% 
+    mutate(Sonde_ID=paste(Sonde_ID)) %>%
+    filter(Site_Name==site_name)
+  
+  #Query values not in db
+  output<-temp[!(temp$Sonde_ID %in% df$Sonde_ID), ]
+}
+
+#apply function
+problems<-lapply(seq(1, nrow(wells)), check_fun) %>% bind_rows %>%
+  #Remove baro loggers
+  filter(!str_detect(Site_Name,'Baro')) %>%
+  #Remove Wetlnd with sonde replacements
+  filter(Site_Name!='JB Wetland Well Shallow') %>%
+  filter(Site_Name!='FN Wetland Well Shallow') %>%
+  filter(Site_Name!='BB Wetland Well Shallow') %>%
+  filter(Site_Name!='DK Wetland Well Shallow') %>%
+  filter(Site_Name!='JU Wetland Well Shallow') 
+  
+#Search line by line to mannualy correct problems in well log files
+# problems[1,]
+# db_get_equip_by_site(db, problems$Site_Name[1], "waterDepth")
+
+#Make sure sites in well log exist in db~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+wells$Site_Name[!(wells$Site_Name %in% db_get_sites(db))]
+
+#2.2.c Merge well log with file log---------------------------------------------
 #Convert times to GMT
 wells<-wells %>%
   #Define Timestamp
@@ -159,32 +207,6 @@ files <- files %>%
   #estimate download date
   mutate(download_date = date(end_date))
 
-#Correct "download" data where appropratie
-files<-files %>%
-  #USDA Wells (Lag between handoff)
-  mutate(download_date = if_else(download_date == ymd("2017-12-22"), 
-                                 ymd("2018-04-09"), 
-                                 download_date)) %>%
-  #Mikey Likey and Dark Bay [Download error?]
-  mutate(download_date = if_else(download_date == ymd("2018-01-04"), 
-                                 ymd("2018-02-10"), 
-                                 download_date)) %>%
-  #Download Error
-  mutate(download_date = if_else(download_date == ymd("2017-12-12"), 
-                                 ymd("2017-12-20"), 
-                                 download_date)) %>%
-  #Potential offet issue
-  mutate(download_date = if_else(download_date == ymd("2018-03-03"), 
-                                 ymd("2018-03-05"), 
-                                 download_date)) %>%
-  mutate(download_date = if_else(download_date == ymd("2018-03-04"), 
-                                 ymd("2018-03-05"), 
-                                 download_date)) %>%
-  #Potential offet issue
-  mutate(download_date = if_else(download_date == ymd("2018-04-26"), 
-                                 ymd("2018-04-28"), 
-                                 download_date)) 
-  
 #join to master lookup table!
 wells<-left_join(wells, files) 
 
@@ -212,38 +234,7 @@ baro<-baro %>%
   na.omit()
 
 #Manual edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#QB Baro Logger
-baro_files %>% filter(Site_Name == "QB Baro") 
-baro$Timestamp<-if_else(baro$download_date == ymd("2018-01-13"), 
-                        baro$Timestamp + hours(5), 
-                        baro$Timestamp)
-baro$Timestamp<-if_else(baro$download_date == ymd("2018-03-04"), 
-                        baro$Timestamp + days(1) + hours(5), 
-                        baro$Timestamp)
-baro$Timestamp<-if_else(baro$download_date == ymd("2018-04-28"), 
-                        baro$Timestamp + hours(5), 
-                        baro$Timestamp)
-baro$Timestamp<-if_else(baro$download_date == ymd("2018-06-30"),
-                        baro$Timestamp + hours(5),
-                        baro$Timestamp)
-baro$Timestamp<-if_else(baro$download_date == ymd("2018-09-11"),
-                        baro$Timestamp + hours(5),
-                        baro$Timestamp)
-baro$Timestamp<-if_else(baro$download_date == ymd("2018-10-10"), 
-                        baro$Timestamp + hours(5), 
-                        baro$Timestamp)
 
-#GR Baro Logger
-baro_files %>% 
-  filter(Site_Name == "GR Baro") %>% 
-  select(download_date, download_datetime, end_date) %>% 
-  mutate(diff = download_datetime - end_date)
-baro$Timestamp<-if_else(baro$Sonde_ID == "10808360" & baro$download_date == ymd("2018-06-24"), 
-                        baro$Timestamp - hours(1), 
-                        baro$Timestamp) 
-baro$Timestamp<-if_else(baro$Sonde_ID == "10808360" & baro$download_date == ymd("2018-09-04"), 
-                        baro$Timestamp - hours(1), 
-                        baro$Timestamp) 
 
 #Combine datasets and upload!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Create seperate collumns for each logger
@@ -294,13 +285,8 @@ remove(list=ls()[ls()!='working_dir' &
 #4.0 Estimate Shallow Ground Water Level ---------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Read custom R functions
-source("functions/download_fun.R")
-source("functions/dygraph_ts_fun.R")
-source("functions/waterHeight_fun.R")
-source("functions/waterDepth_fun.R")
-source("functions/baro_fun.R")
-source("functions/db_get_ts.R")
-source("functions/offset_fun.R")
+funs<-list.files("functions/", full.names = T)
+for(i in 1:length(funs)){source(funs[i]);print(paste(i,"-", funs[i]))}
 
 #Create list of sites
 site_names<-unique(wells$Site_Name[grep("Upland",wells$Site_Name)])
@@ -325,7 +311,6 @@ df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
 
 #Define minor offsets
 force_diff<-rep(NA, nrow(well_log))
-force_diff[c(1:5)]<-5
 
 #Estimate water depth
 df<-waterHeight_fun(Timestamp = df$Timestamp, 
@@ -353,28 +338,30 @@ depths<-waterDepth_fun(
   download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m, 
   #from survey file
   surveyDate = survey_temp$Date, 
-  waterDepth = NA, 
+  waterDepth = survey_temp$`Water Depth (m)`, 
   wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
 
 #Water depth
-df$waterDepth = df$waterHeight + mean(depths$offset[2:4])
+df$waterDepth = df$waterHeight + mean(depths$offset[depths$event=='download'])
 
 #Water Level [datum = wetland invert]
 df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
 
 #Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Plot for funzies
-dygraph_ts_fun(df %>% 
-                 mutate(waterDepth=waterDepth*100+1000) %>%
-                 select(Timestamp, waterDepth))
+#Combine with previous ts
+test<-db_get_ts(db, site, variable_code_CV = 'waterLevel', mdy("1/1/2018"), mdy('10/30/2018'))
+test<-bind_rows(test, tibble(Timestamp = df$Timestamp, 
+                             waterLevel = df$waterLevel))
+#Plot
+dygraph_ts_fun(test %>% 
+                 mutate(waterLevel=waterLevel*100+1000) %>%
+                 select(Timestamp, waterLevel))
 
 #Remove NA 
 df<-na.omit(df)
 
 #Remove pre-deployment 
-df<-df %>% filter(Timestamp>mdy("12-1-2017"))
 
-#Potential disturbance at 7/24/2018(?)
 
 #Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Database insert function
@@ -393,6 +380,170 @@ rodm2::db_insert_results_ts(db = db,
                               "Temperature" = list(column = "temp", units = "Degree Celsius")))
 tf<-Sys.time()
 tf-t0
+
+#4.2 DB Upland Well 1-----------------------------------------------------------
+#Organize Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Identify site and survey data
+site<-"DB Upland Well 1"
+survey_temp<-survey %>% filter(Wetland == "DB")
+
+#Identify well info
+well_log<-wells %>% filter(Site_Name==site) %>% na.omit()
+
+#Download pressure data
+df<-mclapply(paste0(working_dir,well_log$path), download_fun) %>% bind_rows() 
+
+#Make Depth Calculations~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Estimate barometric pressure
+df$barometricPressure<-baro_fun(df$Timestamp, db, 'BARO')
+
+#Define minor offsets
+force_diff<-rep(NA, nrow(well_log))
+
+#Estimate water depth
+df<-waterHeight_fun(Timestamp = df$Timestamp, 
+                    pressureAbsolute = df$pressureAbsolute, 
+                    barometricPressure = df$barometricPressure, 
+                    temp = df$temp,
+                    download_date_ts = df$download_date,
+                    download_date_log = well_log$download_date,
+                    start_date = well_log$start_date, 
+                    end_date = well_log$end_date, 
+                    download_datetime = well_log$download_datetime, 
+                    force_diff = force_diff)
+
+#Examine waterHeight_fun output [iterate if needed using force_diff or offset_fun]
+h_report
+dygraph_ts_fun(df %>% 
+                 mutate(waterHeight=waterHeight*100) %>%
+                 select(Timestamp, waterHeight, pressureAbsolute, barometricPressure))
+
+#Estimate water depth and water level 
+depths<-waterDepth_fun(
+  #from working df
+  Timestamp = df$Timestamp, waterHeight = df$waterHeight,
+  #from well log
+  download_date = well_log$download_date, Relative_Water_Level_m = well_log$Relative_Water_Level_m, 
+  #from survey file
+  surveyDate = survey_temp$Date, 
+  waterDepth = survey_temp$`Water Depth (m)`, 
+  wellHeight = survey_temp$`Upland Well Height (m) - Primary`)
+
+#Water depth
+df$waterDepth = df$waterHeight + mean(depths$offset[depths$event=='download'])
+
+#Water Level [datum = wetland invert]
+df$waterLevel = df$waterDepth + depths$offset[depths$event=="survey_upland_well"] 
+
+#Manual Edits~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Combine with previous ts
+test<-db_get_ts(db, site, variable_code_CV = 'waterLevel', mdy("1/1/2018"), mdy('10/30/2018'))
+test<-bind_rows(test, tibble(Timestamp = df$Timestamp, 
+                             waterLevel = df$waterLevel))
+#Plot
+dygraph_ts_fun(test %>% 
+                 mutate(waterLevel=waterLevel*100+1000) %>%
+                 select(Timestamp, waterLevel))
+
+#Remove NA 
+df<-na.omit(df)
+
+#Remove pre-deployment 
+
+
+#Insert into database~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Database insert function
+t0<-Sys.time()
+rodm2::db_insert_results_ts(db = db,
+                            datavalues = df,
+                            method = "waterdepth",
+                            site_code = site,
+                            processinglevel = "Raw data",
+                            sampledmedium = "Liquid aqueous", # from controlled vocab
+                            #actionby = "Nate",
+                            #equipment_name = "10808360",
+                            variables = list( # variable name CV term = list("colname", units = "CV units")
+                              "waterDepth" = list(column = "waterDepth", units = "Meter"),
+                              "waterLevel" = list(column = "waterLevel", units = "Meter"),
+                              "Temperature" = list(column = "temp", units = "Degree Celsius")))
+tf<-Sys.time()
+tf-t0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
