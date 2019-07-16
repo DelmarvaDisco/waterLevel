@@ -32,7 +32,8 @@ library(readxl)
 library(tidyverse)
 
 #Read custom R functions
-source("functions/db_get_ts.R")
+funs<-list.files("functions/", full.names = T)
+for(i in 1:length(funs)){source(funs[i]);print(paste(i,"-", funs[i]))}
 
 #Define working dir
 working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
@@ -47,12 +48,13 @@ db<-dbConnect(RSQLite::SQLite(),"//nfs/palmer-group-data/Choptank/Nate/PT_Data/c
 sites<-read_csv(paste0(working_dir,"Database Information/sites.csv")) %>% 
   filter(site_code!="TC Wetland Well Shallow")
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#2.0 Download Function--------------------------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#2.0 Wetland Water Level -------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Create download function
 fun<-function(site, 
-              start_date = mdy("10-1-2017"), 
-              end_date = mdy("9-30-2018")){
+              start_date = mdy("1-1-2000"), 
+              end_date = mdy("9-30-2100")){
   #download data
   temp<-db_get_ts(db, paste(site), "waterLevel", start_date, end_date) %>% as_tibble(.)
   
@@ -64,61 +66,28 @@ fun<-function(site,
   temp 
 }
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#3.0 Data requests------------------------------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Kelly (All surface water weltand wells)--------------------------------------------
-kelly<-sites %>% filter(str_detect(site_code,"Wetland Well Shallow")) %>% as.matrix(.)
+#Obtain data from all surface water weltand wells
+SWL<-sites %>% filter(str_detect(site_code,"Wetland Well Shallow")) %>% as.matrix(.)
 
 #Download Data
-kelly<-lapply(kelly, fun) %>% bind_rows(.)
+SWL<-lapply(SWL, fun) %>% bind_rows(.)
 
 #Sort Data
-kelly<-kelly %>% 
-  mutate(Timestamp = floor_date(Timestamp, "day")) %>% 
-  group_by(site, Timestamp) %>% distinct(.) %>%
-  summarise(waterLevel=mean(waterLevel)) %>% 
-  spread(site,waterLevel)
-
-write.csv(kelly,paste0(working_dir,"4Kelly.csv"))
-
-#Michael (DK Wetland Wells)--------------------------------------------
-MW<-sites %>% filter(str_detect(site_code,"DK")) %>% as.matrix(.)
-
-#Download Data
-MW<-lapply(MW, fun) %>% bind_rows(.)
-
-#Sort Data
-MW<-MW %>% 
-  mutate(Timestamp = floor_date(Timestamp, "day")) %>% 
-  group_by(site, Timestamp) %>% distinct(.) %>%
-  summarise(waterLevel=mean(waterLevel)) %>% 
-  spread(site,waterLevel)
-
-write.csv(MW,paste0(working_dir,"4Michael.csv"))
-
-#Sangchul-----------------------------------------------------------------------
-#Obtain data from all surface water weltand wells~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ars<-sites %>% filter(str_detect(site_code,"Wetland Well Shallow")) %>% as.matrix(.)
-
-#Download Data
-ars<-lapply(ars, fun) %>% bind_rows(.)
-
-#Sort Data
-ars<-ars %>% 
+SWL<-SWL %>% 
   mutate(Timestamp = floor_date(Timestamp, "15 min")) %>% 
   group_by(site, Timestamp) %>% distinct(.) %>%
   summarise(waterLevel=mean(waterLevel)) %>% 
   spread(site,waterLevel)
 
-write.csv(ars,paste0(working_dir,"4Sangchul.csv"))
+write.csv(SWL,paste0(working_dir,"SWL.csv"))
 
-#Obtain data from all upland water weltand wells~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ars<-sites %>% filter(str_detect(site_code, "Upland")) %>% as.matrix(.)
-
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#3.0 Upland Water Level --------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Download function
 fun<-function(site, 
-              start_date = mdy("10-1-2017"), 
-              end_date = mdy("9-30-2018")){
+              start_date = mdy("1-1-2000"), 
+              end_date = mdy("9-30-2100")){
   #download data
   temp<-db_get_ts(db, paste(site), "waterDepth", start_date, end_date) %>% as_tibble(.)
   
@@ -130,16 +99,55 @@ fun<-function(site,
   temp 
 }
 
+#Obtain data from all upland water weltand wells
+GWL<-sites %>% filter(str_detect(site_code, "Upland")) %>% as.matrix(.)
+
 #Download Data
-ars<-lapply(ars, fun) %>% bind_rows(.)
+GWL<-lapply(GWL, fun) %>% bind_rows(.)
 
 #Sort Data
-ars<-ars %>% 
+GWL<-GWL %>% 
   mutate(Timestamp = floor_date(Timestamp, "15 min")) %>% 
   group_by(site, Timestamp) %>% distinct(.) %>%
   summarise(waterDepth=mean(waterDepth)) %>% 
   spread(site,waterDepth)
 
 #export
-write.csv(ars,paste0(working_dir,"4Sangchul.csv"))
+write.csv(GWL,paste0(working_dir,"GWL.csv"))
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#4.0 Catchment Outlet Water Level ----------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Download function
+fun<-function(site, 
+              start_date = mdy("1-1-2000"), 
+              end_date = mdy("9-30-2100")){
+  #download data
+  temp<-db_get_ts(db, paste(site), "waterDepth", start_date, end_date) %>% as_tibble(.)
+  
+  #add site collumn
+  colnames(temp)<-c("Timestamp", "waterDepth")
+  temp$site = paste(site)
+  
+  #Export to .GlovalEnv
+  temp 
+}
+
+#Obtain data from all upland water weltand wells
+OWL<-db_get_sites(db) %>% 
+  enframe(name=NULL) %>%
+  filter(str_detect(value, "Catchment")) %>% 
+  as.matrix(.)
+
+#Download Data
+OWL<-lapply(OWL, fun) %>% bind_rows(.)
+
+#Sort Data
+OWL<-OWL %>% 
+  mutate(Timestamp = floor_date(Timestamp, "15 min")) %>% 
+  group_by(site, Timestamp) %>% distinct(.) %>%
+  summarise(waterDepth=mean(waterDepth)) %>% 
+  spread(site,waterDepth)
+
+#export
+write.csv(OWL,paste0(working_dir,"OWL.csv"))
