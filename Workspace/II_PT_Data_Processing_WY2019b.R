@@ -12,10 +12,11 @@
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Organize workspace
 # Step 2: Field Worksheet
-# Step 3: Baro Data
-# Step 4: Water Depth
-# Step 5: QAQC
-# Step 6: Print
+# Step 3: Determine offset for each well
+# Step 4: Baro Data
+# Step 5: Water Depth
+# Step 6: QAQC
+# Step 7: Print
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Setup workspace-------------------------------------------------------
@@ -31,6 +32,7 @@ library(lubridate)
 library(zoo)
 library(tidyverse)
 library(stringr)
+library(readxl)
 
 #Read custom R functions
 source("functions//file_fun.R")
@@ -63,6 +65,58 @@ check_fun(pt_files,field_log)
 #create df of site name, sonde_id, and measured offset
 field_log<-field_log %>% 
   select(Site_Name, Sonde_ID, Relative_Water_Level_m)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4: Determine offset for each piezometer----------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Need to pull out waterHeight data from database....
+
+
+
+
+#read all log files
+RWL<-list.files("data", recursive = T, full.names = T)
+RWL<-RWL[str_detect(RWL,"well_log")]
+RWL<-lapply(RWL, read_csv) %>% 
+  bind_rows() %>% 
+  select(Site_Name, Date, Relative_Water_Level_m) 
+
+#Read previous waterLevel data
+SWL<-read_xlsx(
+    path = "data/Choptank_Wetlands_WY2018.xlsx", 
+    sheet = "SWL", 
+    na="NA") %>% 
+  pivot_longer(-Timestamp)
+GWL<-read_xlsx(
+  path = "data/Choptank_Wetlands_WY2018.xlsx", 
+  sheet = "GWL", 
+  na="NA") %>% 
+  pivot_longer(-Timestamp)
+OWL<-read_xlsx(
+  path = "data/Choptank_Wetlands_WY2018.xlsx", 
+  sheet = "OWL", 
+  na="NA") %>% 
+  pivot_longer(-Timestamp)
+
+#Combine into daily water depth 
+waterDepth<-bind_rows(SWL, GWL, OWL) %>% 
+ mutate(Timestamp = ceiling_date(Timestamp, "day"),
+        Timestamp = as_date(Timestamp))
+remove(SWL, GWL, OWL)
+
+#Estimate offset
+RWL %>% 
+  mutate(Timestamp = mdy(Date))
+
+
+
+
+
+
+
+
+
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Barometric Pressure Data----------------------------------------------
