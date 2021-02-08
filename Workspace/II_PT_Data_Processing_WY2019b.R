@@ -26,6 +26,7 @@ remove(list=ls())
 
 #Gather libraries of interest
 library(dygraphs)
+library(xts)
 library(lubridate)
 library(zoo)
 library(tidyverse)
@@ -34,6 +35,7 @@ library(stringr)
 #Read custom R functions
 source("functions//file_fun.R")
 source("functions//dygraph_ts_fun.R")
+source("functions//download_fun.R")
 
 #Define data directory
 data_dir<-"data\\20190729_Downloads\\"
@@ -44,6 +46,9 @@ pt_files<-pt_files[!str_detect(pt_files, "log")]
 baro_files<-pt_files %>% as_tibble() %>% filter(str_detect(value,"Baro"))
 field_files<-paste0(data_dir, 'well_log.csv')
 #offset<-read_csv("PT_Data\\offset.csv")
+
+#Remove JB wetland well center
+pt_files<-pt_files[!str_detect(pt_files, "JB_Center")]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 2: Field Worksheet--------------------------------------------------------
@@ -62,14 +67,6 @@ field_log<-field_log %>%
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Barometric Pressure Data----------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# ----------------------------------------------------------
-#Pull Downlaod function from Kate Tully's git repo
-# ----------------------------------------------------------
-
-
-
-
 #Gather baro data
 baro<-download_fun(baro_files)
 
