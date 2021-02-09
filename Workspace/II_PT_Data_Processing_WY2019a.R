@@ -6,7 +6,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Known Issues
-#Missing data at BB [dead soned :(]
+#Missing data at BB [dead sonde :(]
 #Looks like JB Wetland well died after Dec 10
 #Missing data after September for Solute Catchment outlet
 
@@ -36,13 +36,13 @@ funs<-list.files("functions/", full.names = T)
 for(i in 1:length(funs)){source(funs[i]);print(paste(i,"-", funs[i]))}
 
 #Define working dir
-working_dir<-"//nfs/palmer-group-data/Choptank/Nate/PT_Data/"
+working_dir<-"data//"
 
 #Set system time zone 
 Sys.setenv(TZ="America/New_York")
 
 #Define database connection
-db<-dbConnect(RSQLite::SQLite(),"//nfs/palmer-group-data/Choptank/Nate/PT_Data/choptank.sqlite")
+db<-dbConnect(RSQLite::SQLite(),"data//choptank.sqlite")
 
 #Download survey data 
 survey<-read_csv(paste0(working_dir,"survey_data/survey_V1.csv"))
@@ -119,7 +119,7 @@ file_fun<-function(n){
 }
 
 #run function
-files<-mclapply(X = seq(1,length(files)), FUN = file_fun, mc.cores = detectCores())
+files<-lapply(X = seq(1,length(files)), FUN = file_fun)
 files<-bind_rows(files)
 
 #2.2 Compile well log information-----------------------------------------------
@@ -127,7 +127,7 @@ files<-bind_rows(files)
 #Create list of file paths
 wells<-list.files(working_dir, recursive = T)
 wells<-wells[grep(wells,pattern = 'well_log')]
-wells<-wells[-grep(wells,pattern = 'archive')]
+#wells<-wells[-grep(wells,pattern = 'archive')]
 
 #Select files to process
 wells<-wells %>% 
@@ -150,7 +150,7 @@ log_fun<-function(n){
 }
 
 #run function
-wells<-mclapply(X = seq(1,length(wells)), FUN = log_fun)
+wells<-lapply(X = seq(1,length(wells)), FUN = log_fun)
 wells<-bind_rows(wells)
 
 #2.2.b Check well logs for potential errors ------------------------------------

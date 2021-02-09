@@ -42,12 +42,11 @@ source("functions//download_fun.R")
 #Define data directory
 data_dir<-"data\\20190729_Downloads\\"
 
-#list pt and baro file locations
+#list pt, baro, and log file locations
 pt_files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
-pt_files<-pt_files[!str_detect(pt_files, "log")]
+  pt_files<-pt_files[!str_detect(pt_files, "log")]
 baro_files<-pt_files %>% as_tibble() %>% filter(str_detect(value,"Baro"))
-field_files<-paste0(data_dir, 'well_log.csv')
-#offset<-read_csv("PT_Data\\offset.csv")
+log_files<-paste0(data_dir, 'well_log.csv')
 
 #Remove JB wetland well center
 pt_files<-pt_files[!str_detect(pt_files, "JB_Center")]
@@ -56,57 +55,261 @@ pt_files<-pt_files[!str_detect(pt_files, "JB_Center")]
 #Step 2: Field Worksheet--------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download Field Worksheet
-field_log<-read_csv(field_files)
+log_files<-read_csv(log_files)
 
 #Check to make sure pt files match field logs
-check_fun(pt_files,field_log)
-#If final 
+check_fun(pt_files,log_files)
 
 #create df of site name, sonde_id, and measured offset
-field_log<-field_log %>% 
+log_files<-log_files %>% 
   select(Site_Name, Sonde_ID, Relative_Water_Level_m)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Determine offset for each piezometer----------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Need to pull out waterHeight data from database....
+
+#Some notes before I quite
+#Create baro file for entire record
+#Create lookup table [pull from 2019a] to find file
+#pull pt file and look up pressure based on table
+#convert to depth
+#examine offset
+
+#random though: make this its own script
 
 
 
+#4.1 Create lookup table for PT data -------------------------------------------
+#Identify files with HOBO export files
+files<-list.files("data/", recursive = T, full.names = T)
+files<-files[substr(files,nchar(files)-2,nchar(files))=="csv"] 
+files<-files[grep(files,pattern = "export")]
 
-#read all log files
-RWL<-list.files("data", recursive = T, full.names = T)
-RWL<-RWL[str_detect(RWL,"well_log")]
-RWL<-lapply(RWL, read_csv) %>% 
+#Select files to process
+files<-files %>% 
+  enframe(name = NULL) %>% 
+  filter(!str_detect(value, "archive")) %>%
+  as.matrix(.)
+
+#Create function to retrieve info from each file
+pt_lookup<-function(n){
+  
+  #Download data
+  temp<-read_csv(files[n], skip=1)
+  
+  #Determine serial number
+  serial_number<-colnames(temp)[grep("LGR",colnames(temp))][1]  #Find collumn name with serial number
+  serial_number<-substr(serial_number,   #isolate serial number
+                        gregexpr("SEN.S.N",serial_number)[[1]][1]+9, #Start
+                        nchar(serial_number)-1) #stop
+  serial_number<-as.numeric(serial_number) 
+  
+  #Determine TZ
+  time_zone<-colnames(temp)[grep("GMT",colnames(temp))]  #Grab collumn name w/ time offset
+  time_zone<-substr(time_zone,
+                    regexpr('GMT', time_zone)[1],
+                    nchar(time_zone))
+  time_zone<-if_else(time_zone=="GMT-04:00",
+                     "EST",
+                     if_else(time_zone=="GMT-05:00",
+                             "EDT",
+                             "-9999"))
+  #Determin units
+  units<-colnames(temp)[grep("Abs Pres,",colnames(temp))]
+  units<-substr(units,
+                regexpr("Abs Pres,", units)+10,
+                regexpr("Abs Pres,", units)+12)
+  
+  #Organize
+  colnames(temp)<-c("ID","Timestamp","pressureAbsolute", "temp")
+  temp<-temp[,c("Timestamp","pressureAbsolute", "temp")]
+  temp<-temp %>%
+    #Select collumns of interest
+    dplyr::select(Timestamp, pressureAbsolute, temp) %>%
+    #Convert to POSIX
+    dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"), tz = time_zone))  %>%
+    #Convert to GMT
+    dplyr::mutate(Timestamp = with_tz(Timestamp, "GMT")) %>%
+    #Order the intput
+    dplyr::arrange(Timestamp)
+  
+  #create output
+  tibble(path       = files[n], 
+         Sonde_ID   = serial_number,
+         units      = units, 
+         start_date = min(temp$Timestamp), 
+         end_date   = max(temp$Timestamp))
+}
+
+#run function
+files<-lapply(X = seq(1,length(files)), FUN = pt_lookup)
+files<-bind_rows(files)
+
+#4.2 Compile field log tables --------------------------------------------------
+logs<-list.files("data//", recursive = T, full.names = T)
+logs<-logs[str_detect(logs, "well_log")]
+logs<-lapply(FUN = read_csv, X=logs) %>% bind_rows()
+
+#4.3 Create function to look up gage pressure for each log entry ---------------
+pressure_fun<-function(n){
+  #Create mode function
+  mode <- function(x) {
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
+  }
+  
+  #Use try catch to estimate pressure
+  pressure<-tryCatch({
+    #Grab row of interest
+    log<-logs[n,]
+    
+    #identify file of interest
+    file<-files %>% 
+      #Filter to sonde ID
+      filter(Sonde_ID == log$Sonde_ID) %>% 
+      #Filter to date of interest
+      filter(start_date <= mdy(log$Date)) %>% 
+      filter(end_date   >= mdy(log$Date)) 
+    
+    #Select top row
+    file<-file[1,]
+    
+    #download data
+    pressure<-download_fun(file$path) %>% 
+      mutate(Timestamp = floor_date(Timestamp)) %>% 
+      mutate(Timestamp = as_date(Timestamp)) %>% 
+      group_by(Timestamp) %>% 
+      summarise(pressureAbsolute = mean(pressureAbsolute, na.rm=T), 
+                Sonde_ID = mode(Sonde_ID)) %>% 
+      filter(Timestamp == mdy(log$Date))
+  }, 
+  error = function(e){tibble(Timestamp = NA, pressureAbsolute=NA, Sonde_ID=NA)})
+  
+  #Export pressure
+  pressure
+}
+
+#Execute function (for the love of all things good and holy, parralelize this...)
+pressure<-lapply(seq(1, nrow(logs)), pressure_fun) %>% 
   bind_rows() %>% 
-  select(Site_Name, Date, Relative_Water_Level_m) 
+  drop_na()
 
-#Read previous waterLevel data
-SWL<-read_xlsx(
-    path = "data/Choptank_Wetlands_WY2018.xlsx", 
-    sheet = "SWL", 
-    na="NA") %>% 
-  pivot_longer(-Timestamp)
-GWL<-read_xlsx(
-  path = "data/Choptank_Wetlands_WY2018.xlsx", 
-  sheet = "GWL", 
-  na="NA") %>% 
-  pivot_longer(-Timestamp)
-OWL<-read_xlsx(
-  path = "data/Choptank_Wetlands_WY2018.xlsx", 
-  sheet = "OWL", 
-  na="NA") %>% 
-  pivot_longer(-Timestamp)
+#4.4 Curate baro logger data for period of record-------------------------------
+#Define Baro Loggers
+baro_id<-c("10589038", #QB Baro
+           "10808360") #GR Baro
 
-#Combine into daily water depth 
-waterDepth<-bind_rows(SWL, GWL, OWL) %>% 
- mutate(Timestamp = ceiling_date(Timestamp, "day"),
-        Timestamp = as_date(Timestamp))
-remove(SWL, GWL, OWL)
+#Define Baro Logger Files
+baro_files<-files %>% filter(Sonde_ID %in% baro_id)
+  
+#run function
+baro<-lapply(X = baro_files$path, FUN = download_fun) %>% bind_rows()
 
-#Estimate offset
-RWL %>% 
-  mutate(Timestamp = mdy(Date))
+#Organize barometric pressure
+baro<-baro %>%
+  #Take daily average
+  
+  
+  #rename baro collumn
+  rename(barometricPressure=pressureAbsolute) %>%
+  #remove duplicate records from same sonde
+  distinct(.) %>%
+  #Remove na's
+  na.omit()
+
+
+
+
+
+
+
+
+
+
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Four this download, I'm going to pull the WY2018 spreadsheet. From here on out, 
+  # I will only pull data from central db file. (Whatever that becomes!!!)
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  #setup db function to pull from SQLite databse
+  library(RSQLite)
+  library(DBI)
+  source("functions//db_get_ts.R")
+
+  #Create list of sites
+  sites<-logs %>% 
+    select(Site_Name) %>% 
+    distinct()
+  
+  #Connect to database
+  #Define database connection
+  db<-dbConnect(RSQLite::SQLite(),"data//choptank.sqlite")
+  
+  
+  
+
+
+  #Connect to 
+  test<-db_get_ts(db, site, variable_code_CV = 'waterLevel', mdy("1/1/1900"), mdy('10/30/2100'))
+  # #Read previous waterLevel data
+  # SWL<-read_xlsx(
+  #     path = "data//20190423_Downloads//Choptank_Wetlands_WY2018.xlsx", 
+  #     sheet = "SWL", 
+  #     na="NA") %>% 
+  #   pivot_longer(-Timestamp)
+  # GWL<-read_xlsx(
+  #   path = "data//20190423_Downloads//Choptank_Wetlands_WY2018.xlsx", 
+  #   sheet = "GWL", 
+  #   na="NA") %>% 
+  #   pivot_longer(-Timestamp)
+  # OWL<-read_xlsx(
+  #   path = "data//20190423_Downloads//Choptank_Wetlands_WY2018.xlsx", 
+  #   sheet = "OWL", 
+  #   na="NA") %>% 
+  #   pivot_longer(-Timestamp)
+  # 
+  # #Combine to create waterLevel data
+  # waterLevel<-bind_rows(SWL, GWL, OWL)
+  # 
+  # #Export waterLevel and clean up
+  # write_csv(waterLevel, "data//20190423_Downloads//output.csv")
+  # write_csv(waterLevel, "data//choptank.csv")
+  # remove(SWL, GWL, OWL)
+  # waterLevel<-read_csv("data//choptank.csv")
+
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Return to normal coiding
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  
+
+#4.2 Download relative water level data from download logs ---------------------
+logs<-list.files("data//", recursive = T, full.names = T)
+logs<-logs[str_detect(logs, "well_log")]
+logs<-lapply(FUN = read_csv, X=logs) %>% bind_rows()
+
+#4.3 Combine water level based on daily mean
+#offset
+waterLevel %>% 
+  #Remove NA's
+  drop_na() %>% 
+  #group by day
+  mutate(Timestamp = ceiling_date(Timestamp, "day"),
+         Timestamp = as_date(Timestamp)) %>% 
+  group_by(Timestamp, name) %>% 
+  summarise(waterLevel = mean(value, na.rm=T))
+  
+
+#FUDGE -- I need waterDepth [or whatever the equivolent i in ODM2 luangage]
+
+
+
+
+
+
+
+
+
+
 
 
 
