@@ -165,7 +165,7 @@ baro<-baro %>%
   #Take daily average
   mutate(Timestamp = ceiling_date(Timestamp), 
          Timestamp = as_date(Timestamp)) %>% 
-  group_by(Timestamp, Sonde_ID) %>% 
+  group_by(Timestamp) %>% 
   summarise(pressureAbsolute = mean(pressureAbsolute, na.rm=T)) %>% 
   #rename baro collumn
   rename(barometricPressure=pressureAbsolute) %>%
