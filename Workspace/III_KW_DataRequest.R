@@ -95,5 +95,5 @@ dt<-dt %>%
   arrange(Site_Name, Timestamp)
 
 #export
-write_csv(dt, "data//output_kt.csv")
+write_csv(dt, "C:\\Workspace\\DOM_Soils\\data\\waterLevel.csv")
 
