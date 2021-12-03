@@ -9,6 +9,8 @@
 
 #Steps
 
+#   1) Set up workspace
+
 
 
 
@@ -40,5 +42,7 @@ pt_files<-list.files(paste0(data_dir, "export"), full.names =  TRUE)
 pt_files<-pt_files[!str_detect(pt_files, "log")]
 pt_files<-pt_files[!str_detect(pt_files, "baro")]
 field_logs<-paste0(data_dir, 'well_log.csv')
+
+
 
 
