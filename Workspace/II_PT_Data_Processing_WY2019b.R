@@ -6,11 +6,23 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Issues with this download
-#   1) Lost JB wetland well. Somethign FUNKY happened on download?
+#   1) Lost JB wetland well. Something FUNKY happened on download?
+#   2) SN:10246253 is on the field_sheet but not in the download batch
 #   2) QB Upland Well 1 offset looks off...not sure whats up
-#   3) Deal with seperate baro loggers
-#   4) Add QAQC steps from James
-#   5) Finish sondes
+#   3) QB Upland Well 2 similar offset problems (Apr 22 2019 ~ 1.17 and Oct 11 2018 ~ 0.67)
+#   4) Denver Catchment Outlet flagged for possible sedimentation accumulating under the PT
+#   5) DF Wetland Well has huge offset (0.68) at Apr 22 2019
+#   6) !!! QB Wetland Well Deep strange behavior Jul 23-29 2019. Weird 0.2m jump on Jul 11th. No data prior to May 2018??
+#   7) Jones Rd South Outlet has weird behavior on Oct 11th 2018 Download... Bad offset??
+#   8) TI Wetland Well Shallow has the same Oct 11th 2018 offset issue (~0.26)
+#   9) Solute Catchment Outlet has same Oct11th 2018 offset (~.3)
+#   10) !!!NB Wetland Well has a data gap. How do I handle this offset?
+#   11) Only one upland well download for JB-UW?? not sure which
+#   12) JC-SW PT filled, how to do offset with data gap? Has similar offset problem (~0.26) on Oct 11th download
+#   13) JC-UW1 filled, data gap... Offset problem (~0.6)
+#   14) JA-SW with data gap.. Offset problem (0.2)
+#   15) JR Outlet with data gap ... Offset problem (~0.39)
+#Deal with seperate baro loggers
 
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,43 +126,17 @@ df<-df %>%
 # Step 6: Calculate waterLevel -------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  #Some Notes. I will update this going forward. 
-  #First, I"m only going to process KT's wetland sites: ND, QB, TB, and DB
-
-  #We're goign to estimate the offset for each gage, then apply all at once
-
-
 # 6.0 Create offset summary table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Create list of sites
-index<-df %>% 
-  #Select unique site names
-  select(Site_Name) %>% 
-  unique() %>% 
-  #Remove baro and deep wetland wells
-  filter(!str_detect(Site_Name,"Baro")) %>% 
-  filter(!str_detect(Site_Name, "Deep")) %>% 
-  #Filter to sites of interest [for now!]
-  filter(str_detect(Site_Name,"QB")) %>% 
-  #Add final offset col
-  mutate(offset = 0)
 
-#limit df to those sites
-offset<-offset %>% 
-  #Select offset of relevant sites
-  filter(Site_Name %in% sites) %>% 
-  drop_na() %>% 
-  #Add collumn 
-  mutate(actual = 0)
 
-#Connect to database 
-library(RSQLite)
-library(DBI)
-db<-dbConnect(RSQLite::SQLite(),"data//choptank.sqlite")
-
+#Read in previous output files for comparison
+dt <- read_csv("data_long")
   
+
 # 6.1 QB Wetland Well Shallow --------------------------------------------------
+
 #List the site in question
-site<-index$Site_Name[1]
+site<-"QB Wetland Well Shallow"
 
 #Examine the measured offset 
 offset %>% 
@@ -169,14 +155,17 @@ temp_1<-df %>%
   select(Timestamp, waterLevel, level)
 
 #Create temp df
-temp_2<-db_get_ts(db, site, variable_code_CV = 'waterLevel', mdy("1/1/1900"), mdy('1/1/2100'))
-temp_2<-temp_2 %>% as_tibble() %>% mutate(level = 1)
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+  
 temp<-bind_rows(temp_1, temp_2) %>% 
   # mutate(Timestamp = ceiling_date(Timestamp), 
   #        Timestamp = as_date(Timestamp)) %>% 
   # group_by(Timestamp, level) %>% 
   # summarise(waterLevel = mean(waterLevel, na.rm=T)+100)
-  mutate(waterLevel = waterLevel + 100)
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
 
 #plot in dygraphs
 dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
@@ -189,7 +178,7 @@ remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
 
 # 6.2 QB Upland Well 2----------------------------------------------------------
 #List the site in question
-site<-index$Site_Name[2]
+site<-"QB Upland Well 2"
 
 #Examine the measured offset 
 offset %>% filter(Site_Name==site) 
@@ -197,11 +186,6 @@ offset %>% filter(Site_Name==site) %>% ggplot(aes(x=offset)) +  geom_dotplot()
 
 #Define offset
 offset_temp<- -1.22
-  # offset %>% 
-  # filter(Site_Name==site) %>% 
-  # filter(offset>-3) %>% 
-  # summarise(offset = mean(offset, na.rm=T)) %>% 
-  # pull()
 
 #Estimate water level
 temp_1<-df %>% 
@@ -211,15 +195,14 @@ temp_1<-df %>%
   select(Timestamp, waterLevel, level)
 
 #Create temp df
-temp_2<-db_get_ts(db, site, variable_code_CV = 'waterLevel', mdy("1/1/1900"), mdy('1/1/2100'))
-temp_2<-temp_2 %>% as_tibble() %>% mutate(level = 1)
-temp<-bind_rows(temp_1, temp_2) %>% 
-  # mutate(Timestamp = ceiling_date(Timestamp), 
-  #        Timestamp = as_date(Timestamp)) %>% 
-  # group_by(Timestamp, level) %>% 
-  # summarise(waterLevel = mean(waterLevel, na.rm=T)+100)
-  mutate(waterLevel = waterLevel + 100)
+temp_2 <- dt %>% 
+  filter(Site_Name == site)
 
+temp <- bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+  
 #plot in dygraphs
 dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
 
@@ -231,7 +214,7 @@ remove(list=ls()[str_detect(ls(), "temp")])
 
 # 6.3 QB Upland Well 1 ---------------------------------------------------------
 #List the site in question
-site<-index$Site_Name[3]
+site<- "QB Upland Well 1"
 
 #Examine the measured offset 
 offset %>% filter(Site_Name==site) 
@@ -250,8 +233,13 @@ temp_1<-df %>%
 #Create temp df
 temp_2<-db_get_ts(db, site, variable_code_CV = 'waterLevel', mdy("1/1/1900"), mdy('1/1/2100'))
 temp_2<-temp_2 %>% as_tibble() %>% mutate(level = 1)
+
+temp_2 <- dt %>% 
+  filter(Site_Name == site)
 temp<-bind_rows(temp_1, temp_2) %>% 
   mutate(waterLevel = waterLevel + 100)
+
+
 
 #plot in dygraphs
 dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
@@ -263,6 +251,572 @@ index$offset[index$Site_Name == site] <-offset_temp
 remove(list=ls()[str_detect(ls(), "temp")])
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+# 6.4 Denver Catchment Outflow --------------------------------------------
+#List the site in question
+site <-"Denver Catchment Outlet"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.5 DF Wetland Well Shallow -------------------------------------------------------------------
+site <-"DF Wetland Well Shallow"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- -0.68
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.6 QB Wetland Well Deep -------------------------------------------------------------------
+
+site <-"QB Wetland Well Deep"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.7 Jones Road South Catchment Outlet ---------------------------------------------------------------------
+site <- "Jones Road South Catchment Outlet"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 100.29-100.51
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.8 TI Wetland Well Shallow ------------------------------------------------------------------
+site <- "TI Wetland Well Shallow"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 100.53-101.08
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.9 Solute Catchment Outlet ---------------------------------------------------------------------
+site <- "Solute Catchment Outlet"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 100.05 - 100.36
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.11 NB Wetland Well --------------------------------------------------------------------
+site <- "NB Wetland Well"
+
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(Site_Name == "NB Wetland Well Shallow")
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.12 ????JB Upland Well???? -----------------------------------------------------------------------
+site <- "JB Upland Well"
+#Which upland well? not specified
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.13 JB Wetland Well --------------------------------------------------------------------
+### Site is missing
+
+
+# 6.14 JC Wetland Well Shallow --------------------------------------------------------------------
+site <- "JC Wetland Well Shallow"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.14 JC Upland Well 1 ------------------------------------------------------------------
+site <- "JC Upland Well 1"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.15 JA Wetland Well Shallow --------------------------------------------------------------------
+site <- "JA Wetland Well Shallow"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(site == Site_Name)
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+# 6.16 JR Outlet ------------------------------------------------
+
+site <- "JR Outlet"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(Site_Name == "Jones Road North Catchment Outlet")
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+# 6.17 	DV Wetland Well Shallow --------------------------------------------------------------------
+site <- "DV Wetland Well Shallow"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(Site_Name == "Jones Road North Catchment Outlet")
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+# 6.18 GB Wetland Well Shallow --------------------------------------------------------------------
+site <- "GB Wetland Well Shallow"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(Site_Name == "Jones Road North Catchment Outlet")
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+# 6.19 JU Wetland Well Shallow --------------------------------------------------------------------
+site <- "JU Wetland Well Shallow"
+
+#Examine the measured offset 
+offset %>% 
+  filter(Site_Name==site) %>% 
+  ggplot(aes(x=offset)) +
+  geom_dotplot()
+
+#Define offset
+offset_temp <- 0
+
+#Estimate water level
+temp_1<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  mutate(level = 0) %>% 
+  select(Timestamp, waterLevel, level)
+
+#Create temp df
+temp_2 <- dt %>% 
+  filter(Site_Name == "Jones Road North Catchment Outlet")
+
+temp<-bind_rows(temp_1, temp_2) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  drop_na(waterLevel)
+
+#plot in dygraphs
+dygraph_ts_fun(temp %>% select(Timestamp, waterLevel))
+
+#From here, iteratively change offset until it matches dygraph
+
+#export offet and clean up space
+index$offset[index$Site_Name == site] <-offset_temp
+remove(list=ls()[str_detect(ls(), "temp")]) ; remove(site)
+
+
+
+
 # Step 7: Apply offset and export ----------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #epxort df
