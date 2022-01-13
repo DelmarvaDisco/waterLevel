@@ -5,7 +5,7 @@
 #Purpose: Analysis of 20190729 Download
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#Issues with this download
+#Issues with this download 
 #   1) Lost JB wetland well. Something FUNKY happened on download?
 #   2) SN:10246253 is on the field_sheet but not in the download batch
 #   2) QB Upland Well 1 offset looks off...not sure whats up
