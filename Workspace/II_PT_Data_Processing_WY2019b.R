@@ -61,7 +61,7 @@ data_dir<-"data\\20190729_Downloads\\"
 
 #list pt, baro, and log file locations
 pt_files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
-  pt_files<-pt_files[!str_detect(pt_files, "log")]
+pt_files<-pt_files[!str_detect(pt_files, "log")]
 baro_files<-pt_files %>% as_tibble() %>% filter(str_detect(value,"Baro"))
 field_logs<-paste0(data_dir, 'well_log.csv')
 
