@@ -1,6 +1,6 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Title: waterLevel 
-#Coder: Nate Jones (cnjones7@ua.edu)
+#Coder: Nate Jones (cnjones7@ua.edu); James M takning up
 #Date: 5/28/2020
 #Purpose: Analysis of 20190729 Download
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
