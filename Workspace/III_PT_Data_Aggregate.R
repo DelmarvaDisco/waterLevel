@@ -1,5 +1,8 @@
 # Compile output.csv data
 
+library(readxl)
+library(tidyverse)
+
 #Set data directory
 data_dir <- "data//"
 
@@ -25,6 +28,9 @@ df <- pivot_longer(df, cols = -c("Timestamp"),
                    names_to = "Site_Name", 
                    values_to = "waterLevel")
 
+#Check make a tibble with list of site names
+site_names <- as_tibble(unique(df$Site_Name))
+
 # 3. Read in data after 20190422 ------------------------------------------
 
 
@@ -38,35 +44,34 @@ dt<-list.files(paste0("data//"), full.names =  TRUE, recursive = T) %>%
 
 # 4. Clean up other output tables to merge with df ------------------------
 
-dx <- dt %>% 
+dt <- dt %>% 
   #Remove values from dt (post Apr 2019) included in df (pre Apr 2019)
-  filter(Timestamp > "2019-04-22 20:00:00") %>% 
+  #filter(Timestamp > "2019-04-22 20:00:00") %>% 
   #Trim down the data table
   select(c("Timestamp", "name", "value", "Site_Name", "waterHeight", "waterLevel"))
 
 #Find data entries with missing Site_Name and replace those values with values from the "name" column
 #See counts for nas
-na_Site_Name <- sum(is.na(dx$Site_Name))
-not_na_name <- sum(is.na(dx$name))
+na_Site_Name <- sum(is.na(dt$Site_Name))
+not_na_name <- sum(is.na(dt$name))
 
-dx <- dx %>% 
-  mutate(Site_Name = ifelse(is.na(dx$Site_Name), 
-                            dx$name, 
-                            dx$Site_Name)) %>% 
+dt <- dt %>% 
+  mutate(Site_Name = ifelse(is.na(dt$Site_Name), 
+                            dt$name, 
+                            dt$Site_Name)) %>% 
   select(-name)
 
 #Find data entries with a missing "waterLevel" and replace those values from the "value" column
-dl <- dx %>% 
-  mutate(waterLevel = ifelse(is.na(dx$waterLevel),
-                             dx$value,
-                             dx$waterLevel)) 
-
-
+dt <- dt %>% 
+  mutate(waterLevel = ifelse(is.na(dt$waterLevel),
+                             dt$value,
+                             dt$waterLevel)) 
 
 
 # Xport! ------------------------------------------------------------------
 
-write_csv(df, file = "all_data_long")
+write_csv(df, file = "ouput_data_long.csv")
+
 
 
 
