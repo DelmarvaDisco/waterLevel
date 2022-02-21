@@ -1,4 +1,8 @@
-# Compile output.csv data
+# Purpose: Compile output.csv data
+# !!!Notes: 
+# - df works with the Choptank_Wetlands_WY2019.xlsx file, pivoting into a long csv.
+# - dt compiles all other output files. STILL needs work compiling. 
+# !!!
 
 library(readxl)
 library(tidyverse)
