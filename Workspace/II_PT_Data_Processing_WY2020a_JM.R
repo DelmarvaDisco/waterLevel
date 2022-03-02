@@ -127,13 +127,10 @@ df<-df %>%
 # Step 6: Calculate waterLevel -------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#Some Notes. I will update this going forward. 
-
-#We're going to estimate the offset for each gage, then apply all at once
-
 
 # 6.0 Compare offsets to measured values?  ----------------------------------------------
 
+checks <- tibble(Site_Name = c("na", "na"), sensor_wtrlvl = c("na", "na"))
 
 
 # 6.1 DB-UW1 --------------------------------------------------
@@ -147,18 +144,31 @@ offset_temp <- offset %>%
   pull(offset)
 
 #Estimate water level
-temp_1<-df %>% 
+temp<-df %>% 
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
   select(Timestamp, waterLevel, level)
 
 
 #plot in dygraphs
-dygraph_ts_fun(temp_1 %>% select(Timestamp, waterLevel))
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
+#Check
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean()
+
+
+
+  
+  
+rm(site, temp, temp_dy)
 
 # 6.2 QB-UW1 --------------------------------------------------
 
@@ -171,17 +181,18 @@ offset_temp <- offset %>%
   pull(offset)
 
 #Estimate water level
-temp_1<-df %>% 
+temp <- df %>% 
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   mutate(level = 0) %>% 
-  filter(!is.na(waterLevel)) %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
+  filter(!is.na(waterLevel)) %>%
   select(Timestamp, waterLevel, level)
 
 
 #plot in dygraphs
-dygraph_ts_fun(temp_1 %>% select(Timestamp, waterLevel))
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 # 6.3 DB-SW ---------------------------------------------------------
 #List the site in question
@@ -198,12 +209,13 @@ temp_1<-df %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
   select(Timestamp, waterLevel, level)
 
 
 #plot in dygraphs
-dygraph_ts_fun(temp_1 %>% select(Timestamp, waterLevel))
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 
 # 6.4 ND-UW1  ---------------------------------------------------------
@@ -257,10 +269,8 @@ dygraph_ts_fun(temp_1 %>% select(Timestamp, waterLevel))
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 7: Apply offset and export ----------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#epxort df
-df<-df %>% 
-  left_join(.,index) %>% 
-  mutate(waterLevel = waterHeight + offset)
+
+
 
 #export 
 write_csv(df,paste0(data_dir,"output.csv"))
