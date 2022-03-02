@@ -9,8 +9,8 @@
 
 #Issues with this download
 # - Missing export for QB-UW1, no serial number on the field sheet
-# - Two downloads don't have values on the field sheet (SNs: 10258762 & 	
-# 10395473)
+# - Two downloads don't have values on the field sheet (SNs: 10258762 DB-UW1 & 	
+# 10395473 TB-UW2)
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Organize workspace
@@ -47,9 +47,9 @@ source("functions//db_get_ts.R")
 data_dir<-"data\\"
 
 #list pt, baro, and log file locations
-pt_files<-list.files(paste0(data_dir, "20200508_Downloads\\export"), full.names =  TRUE) 
-  pt_files<-pt_files[!str_detect(pt_files, "log")]
-  pt_files<-pt_files[!str_detect(pt_files, "baro")]
+files<-list.files(paste0(data_dir, "20200508_Downloads\\export"), full.names =  TRUE) 
+  pt_files<-files[!str_detect(files, "log")]
+  pt_files<-pt_files[!str_detect(pt_files, "Baro")]
 field_logs<-paste0(data_dir, 'well_log.csv')
 
 #gather pt data
@@ -59,14 +59,14 @@ df<-pt_files %>% map_dfr(download_fun)
 #Step 2: Field Worksheet--------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download Field Worksheet
-field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\export\\well_log.csv"))
+field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\well_log.csv"))
 
 #create df of site name, sonde_id, and measured offset
 field_logs<-field_logs %>% 
   select(Site_Name, Sonde_ID, Relative_Water_Level_m)
 
 #Check to make sure pt files match field logs
-check_fun(pt_files,field_logs)
+check_fun(pt_files, field_logs)
 rm(check_fun_errors)
 
 #join to master df
@@ -87,13 +87,13 @@ offset<-read_csv(paste0(data_dir,"Database Information\\offset.csv"))
 # Step 4: Barometric Pressure Data----------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download baro assignment [this may need to be changed manually]
-baro_index<-read_csv(paste0(data_dir, "Database Information\\barro_assignment.csv"))
+baro_index<-read_csv(paste0(data_dir, "Database Information\\baro_assignment.csv"))
 
 #Join baro index to df
 df<-df %>% left_join(.,baro_index)
 
 #download baro information
-baro_files<- pt_files %>% as_tibble() %>%  filter(str_detect(value,"Baro")) %>% as_vector()
+baro_files<- files %>% as_tibble() %>%  filter(str_detect(value,"Baro")) %>% as_vector()
 baro<-lapply(baro_files, download_fun) %>% bind_rows()
 
 #Assign Baro logger to each row
@@ -113,7 +113,7 @@ df<-df %>%
   #Now select based on sonde
   mutate(pressureBaro = if_else(baro_logger == "GR Baro", temp_gr, temp_qb)) %>% 
   #remove unwanted rows
-  select(-temp_gr, -temp_qb, -baro_logger)
+  select(-temp_gr, -temp_qb)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 5: WaterHeight Data-------------------------------------------------------
