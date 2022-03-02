@@ -5,6 +5,8 @@
 #Purpose: Analysis of 20200508 Download
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+#James started processing from here
+
 #Issues with this download
 # - Missing export for QB-UW1, no serial number on the field sheet
 

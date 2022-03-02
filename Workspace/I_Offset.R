@@ -8,7 +8,6 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Setup workspace-------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 #Clear workspace 
 remove(list=ls())
 
@@ -175,13 +174,13 @@ baro<-baro %>%
   na.omit()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Step 6: Estimate offset ------------------------------------------------------
+#Step 6: Gather offset ------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Some quick notes aobut our definition of offset
 #   waterLevel = waterHeight + offset
 #   offset = waterLevel - waterHeight
 
-#Estiamte output
+#Isolate offset
 output<-logs %>% 
   #Join relevant tables
   mutate(Timestamp = mdy(Date)) %>% 
@@ -193,11 +192,30 @@ output<-logs %>%
   rename(waterLevel = Relative_Water_Level_m) %>% 
   mutate(offset = waterLevel - waterHeight) %>% 
   #select cols of interest
-  select(Site_Name, Date, Sonde_ID, Timestamp, offset)
+  select(Site_Name, Date, Sonde_ID, Timestamp, offset) %>% 
+  #Filter to 2018 data (to match orignial offset!)
+  mutate(Date = mdy(Date)) %>% 
+  filter(Date<mdy("1/1/2019"))
 
-#export output
-write_csv(output, "data/Database Information/offset.csv")
+#Estimate mean offset for each site
+offset_mean<-output %>% 
+  group_by(Site_Name) %>% 
+  summarise(offset_mean = mean(offset, na.rm=T))
+
+#Join
+output<-left_join(output, offset_mean)
+
+#Filter outliers
+output<-output %>%
+  drop_na() %>% 
+  mutate(error = abs(offset - offset_mean)) %>% 
+  filter(error < 0.1) %>% 
+  group_by(Site_Name) %>% 
+  summarise(offset = mean(offset, na.rm=T))
   
+# #export output
+write_csv(output, "data/Database Information/offset.csv")
+   
   
 
 
