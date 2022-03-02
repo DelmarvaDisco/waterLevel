@@ -9,6 +9,8 @@
 
 #Issues with this download
 # - Missing export for QB-UW1, no serial number on the field sheet
+# - Two downloads don't have values on the field sheet (SNs: 10258762 & 	
+# 10395473)
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Organize workspace
@@ -65,9 +67,11 @@ field_logs<-field_logs %>%
 
 #Check to make sure pt files match field logs
 check_fun(pt_files,field_logs)
+rm(check_fun_errors)
 
 #join to master df
-df<-df %>% left_join(., field_logs) 
+df <- df %>% left_join(., field_logs) 
+  
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Determine offset for each piezometer----------------------------------
@@ -77,14 +81,13 @@ df<-df %>% left_join(., field_logs)
 #   offset = waterLevel - waterHeight
 
 #Read offset file
-offset<-read_csv(paste0(data_dir,"offset.csv"))
+offset<-read_csv(paste0(data_dir,"Database Information\\offset.csv"))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Barometric Pressure Data----------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download baro assignment [this may need to be changed manually]
-baro_index<-read_csv("data//Database Information//baro_assignment.csv") %>% 
-  rename(Site_Name = site_code)
+baro_index<-read_csv(paste0(data_dir, "Database Information\\barro_assignment.csv"))
 
 #Join baro index to df
 df<-df %>% left_join(.,baro_index)
