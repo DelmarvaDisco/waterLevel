@@ -6,7 +6,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Issues with this download
-
+# - Missing export for QB-UW1, no serial number on the field sheet
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Organize workspace
@@ -75,7 +75,7 @@ df<-df %>% left_join(., field_logs)
 #   offset = waterLevel - waterHeight
 
 #Read offset file
-offset<-read_csv("data/Database Information/offset.csv")
+offset<-read_csv(paste0(data_dir,"offset.csv"))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Barometric Pressure Data----------------------------------------------
