@@ -42,10 +42,10 @@ source("functions//download_fun.R")
 source("functions//db_get_ts.R")
 
 #Define data directory
-data_dir<-"data\\20200508_Downloads\\"
+data_dir<-"data\\"
 
 #list pt, baro, and log file locations
-pt_files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
+pt_files<-list.files(paste0(data_dir, "20200508_Downloads\\export"), full.names =  TRUE) 
   pt_files<-pt_files[!str_detect(pt_files, "log")]
   pt_files<-pt_files[!str_detect(pt_files, "baro")]
 field_logs<-paste0(data_dir, 'well_log.csv')
@@ -57,14 +57,14 @@ df<-pt_files %>% map_dfr(download_fun)
 #Step 2: Field Worksheet--------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download Field Worksheet
-field_logs<-read_csv(field_logs)
-
-#Check to make sure pt files match field logs
-#check_fun(pt_files,field_logs)
+field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\export\\well_log.csv"))
 
 #create df of site name, sonde_id, and measured offset
 field_logs<-field_logs %>% 
   select(Site_Name, Sonde_ID, Relative_Water_Level_m)
+
+#Check to make sure pt files match field logs
+check_fun(pt_files,field_logs)
 
 #join to master df
 df<-df %>% left_join(., field_logs) 

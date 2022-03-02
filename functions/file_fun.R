@@ -65,6 +65,8 @@ check_fun<-function(pt_files,field_log){
   #Find missing data
   output<-output %>% filter(is.na(x) | is.na(y))
   
+  check_fun_errors <<- as.tibble(output)
+  
   #Export Output
   if(nrow(output)==0){
     print("#--------------------------------------------------")
@@ -78,4 +80,5 @@ check_fun<-function(pt_files,field_log){
     print("Ahh shit...you messed something up you goof! ")
     output
   }
+  
 }
