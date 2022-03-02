@@ -202,15 +202,20 @@ offset_mean<-output %>%
   group_by(Site_Name) %>% 
   summarise(offset_mean = mean(offset, na.rm=T))
 
-#filter outliers
+#Join
 output<-left_join(output, offset_mean)
 
-
-
-
+#Filter outliers
+output<-output %>%
+  drop_na() %>% 
+  mutate(error = abs(offset - offset_mean)) %>% 
+  filter(error < 0.1) %>% 
+  group_by(Site_Name) %>% 
+  summarise(offset = mean(offset, na.rm=T))
+  
 # #export output
-# write_csv(output, "data/Database Information/offset.csv")
-#   
+write_csv(output, "data/Database Information/offset.csv")
+   
   
 
 
