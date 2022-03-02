@@ -55,7 +55,7 @@ check_fun<-function(pt_files,field_log){
   sonde_files<-bind_rows(sonde_files) %>% select(Sonde_ID)
   
   #Collect sonde serial number from field sheet
-  field_sheet<-field_log %>% select(Sonde_ID)
+  field_sheet<-field_log %>% select(Sonde_ID, Site_Name)
   
   #Join
   sonde_files <- sonde_files %>% mutate(x = 'sonde_files')
