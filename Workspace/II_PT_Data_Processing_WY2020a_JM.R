@@ -71,7 +71,6 @@ rm(check_fun_errors)
 #join to master df
 df <- df %>% left_join(., field_logs) 
   
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Read the offset file for wells ----------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,7 +111,9 @@ df<-df %>%
   #Now select based on sonde
   mutate(pressureBaro = if_else(baro_logger == "GR Baro", temp_gr, temp_qb)) %>% 
   #remove unwanted rows
-  select(-temp_gr, -temp_qb)
+  select(-temp_gr, -temp_qb, -download_date)
+
+rm(gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro_files)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 5: WaterHeight Data-------------------------------------------------------
