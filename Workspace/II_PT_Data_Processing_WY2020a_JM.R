@@ -41,6 +41,7 @@ source("functions//file_fun.R")
 source("functions//dygraph_ts_fun.R")
 source("functions//download_fun.R")
 source("functions//db_get_ts.R")
+source("functions//fun_anomalous.R")
 
 #Define data directory
 data_dir<-"data\\"
@@ -113,7 +114,7 @@ df<-df %>%
   #remove unwanted rows
   select(-temp_gr, -temp_qb, -download_date)
 
-rm(gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro_files)
+rm(gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro_files, baro, baro_index)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 5: WaterHeight Data-------------------------------------------------------
@@ -133,7 +134,6 @@ df<-df %>%
 
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
-
 # 6.1 DB-UW1 --------------------------------------------------
 
 #List the site in question
@@ -150,7 +150,7 @@ temp<-df %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, level)
+  select(Timestamp, waterLevel, Site_Name)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
@@ -172,7 +172,11 @@ check <- temp %>%
 #Add to the check table
 checks <- checks %>% 
   add_row(Site_Name = site, sensor_wtrlvl = check)
-  
+
+#Append processed data to the output table
+output <- temp 
+
+#Clean up environment  
 rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.2 QB-UW1 --------------------------------------------------
@@ -189,9 +193,8 @@ offset_temp <- offset %>%
 temp <- df %>% 
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
-  mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>%
-  select(Timestamp, waterLevel, level)
+  select(Timestamp, waterLevel, Site_Name)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
@@ -215,6 +218,11 @@ check <- temp %>%
 checks <- checks %>% 
   add_row(Site_Name = site, sensor_wtrlvl = check)
 
+#Append to the output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment 
 rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.3 DB-SW ---------------------------------------------------------
@@ -230,9 +238,8 @@ offset_temp <- offset %>%
 temp <- df %>% 
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
-  mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, level)
+  select(Timestamp, waterLevel, Site_Name)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
@@ -255,35 +262,629 @@ check <- temp %>%
 checks <- checks %>% 
   add_row(Site_Name = site, sensor_wtrlvl = check)
 
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
 rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.4 ND-UW1  ---------------------------------------------------------
 
+site <- "ND-UW1"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
 # 6.5 ND-UW2  ---------------------------------------------------------
+site <- "ND-UW2"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.6 ND-SW ---------------------------------------------------------
+site <- "ND-SW"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.7 QB-UW2 ------------------------------------------------------------
+site <- "QB-UW2"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.04, max = 0.2)
+
+#Need to do a little extra filtering on this site
+temp <- temp %>% 
+  filter(Timestamp <= "2020-03-09 18:30:00" | Timestamp >= "2020-03-09 22:30:00")
+
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.9 QB-SW ------------------------------------------------------------
+site <- "QB-SW"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.10 TB-UW1 ------------------------------------------------------------
 
+site <- "TB-UW1"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
 # 6.11 TB-UW2 ------------------------------------------------------------
+
+site <- "TB-UW2"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.12 TB-UW3 ------------------------------------------------------------
 
+site <- "TB-UW3"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
 # 6.13 TB-SW ------------------------------------------------------------
+
+site <- "TB-SW"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.14 TA-SW ------------------------------------------------------------
 
+site <- "TA-SW"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
 # 6.15 TI-SW ------------------------------------------------------------
+
+site <- "TI-SW"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.16 DK-SW ------------------------------------------------------------
 
+site <- "DK-SW"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
 # 6.17 DK-UW1 ------------------------------------------------------------
 
+site <- "DK-UW1"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
 # 6.18 DK-UW2 ------------------------------------------------------------
+
+site <- "DK-UW2"
+
+#Find the offset
+offset_temp <- offset %>% 
+  filter(Site_Name == site) %>% 
+  pull(offset)
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.19  DF-SW -------------------------------------------------------------------
 
@@ -304,12 +905,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 # 6.27 NB-SW --------------------------------------------------------------
 
 
+all_sites <- ggplot(data = output, 
+                    mapping = aes(x = Timestamp,
+                                  y = waterLevel,
+                                  color = Site_Name)) +
+  geom_line() +
+  theme_bw()
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 7: Apply offset and export ----------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+rm(all_sites)
 
 
 #export 
-write_csv(df,paste0(data_dir,"output.csv"))
+write_csv(output,paste0(data_dir,"output.csv"))
+
+
