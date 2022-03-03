@@ -152,6 +152,8 @@ temp<-df %>%
   filter(!is.na(waterLevel)) %>% 
   select(Timestamp, waterLevel, level)
 
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
 temp_dy <- temp %>% 
@@ -191,6 +193,9 @@ temp <- df %>%
   filter(!is.na(waterLevel)) %>%
   select(Timestamp, waterLevel, level)
 
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
 #plot in dygraphs
 temp_dy <- temp %>% 
   mutate(waterLevel = waterLevel + 100)
@@ -228,6 +233,9 @@ temp <- df %>%
   mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>% 
   select(Timestamp, waterLevel, level)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
 temp_dy <- temp %>% 
