@@ -130,7 +130,7 @@ df<-df %>%
 
 # 6.0 Compare offsets to measured values?  ----------------------------------------------
 
-checks <- tibble(Site_Name = c("na", "na"), sensor_wtrlvl = c("na", "na"))
+checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 
 # 6.1 DB-UW1 --------------------------------------------------
@@ -155,20 +155,22 @@ temp<-df %>%
 #plot in dygraphs
 temp_dy <- temp %>% 
   mutate(waterLevel = waterLevel + 100)
+
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
-#Check
+#Extract the last measured water level to check against field sheet
 check <- temp %>% 
   arrange(desc(Timestamp)) %>% 
   slice(1:10) %>% 
   pull(waterLevel) %>% 
-  mean()
+  mean() %>% 
+  as.character()
 
-
-
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
   
-  
-rm(site, temp, temp_dy)
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.2 QB-UW1 --------------------------------------------------
 
@@ -188,11 +190,26 @@ temp <- df %>%
   filter(!is.na(waterLevel)) %>%
   select(Timestamp, waterLevel, level)
 
-
 #plot in dygraphs
 temp_dy <- temp %>% 
   mutate(waterLevel = waterLevel + 100)
+
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.3 DB-SW ---------------------------------------------------------
 #List the site in question
@@ -204,19 +221,32 @@ offset_temp <- offset %>%
   pull(offset)
 
 #Estimate water level
-temp_1<-df %>% 
+temp <- df %>% 
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>% 
   select(Timestamp, waterLevel, level)
 
-
 #plot in dygraphs
 temp_dy <- temp %>% 
   mutate(waterLevel = waterLevel + 100)
+
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.4 ND-UW1  ---------------------------------------------------------
 
