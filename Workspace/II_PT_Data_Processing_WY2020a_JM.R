@@ -22,7 +22,7 @@
 # Step 7: Print
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 1: Setup workspace-------------------------------------------------------
+# Step 1: Setup workspace -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Clear workspace 
@@ -57,7 +57,7 @@ field_logs<-paste0(data_dir, 'well_log.csv')
 df<-pt_files %>% map_dfr(download_fun)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Step 2: Field Worksheet--------------------------------------------------------
+# Step 2: Field Worksheet --------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download Field Worksheet
 field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\well_log.csv"))
@@ -84,7 +84,7 @@ df <- df %>% left_join(., field_logs)
 offset<-read_csv(paste0(data_dir,"Database Information\\offset.csv"))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 4: Barometric Pressure Data----------------------------------------------
+# Step 4: Barometric Pressure Data ----------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download baro assignment [this may need to be changed manually]
 baro_index<-read_csv(paste0(data_dir, "Database Information\\baro_assignment.csv"))
@@ -118,7 +118,7 @@ df<-df %>%
 rm(gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro_files, baro, baro_index)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 5: WaterHeight Data-------------------------------------------------------
+# Step 5: WaterHeight Data -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Estimate waterHeight
 df<-df %>% 
@@ -358,6 +358,7 @@ output <- output %>%
 rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.6 ND-SW ---------------------------------------------------------
+
 site <- "ND-SW"
 
 #Find the offset
@@ -888,7 +889,7 @@ output <- output %>%
 #Clean up environment
 rm(site, temp, temp_dy, check, offset_temp)
 
-# 6.19  DF-SW -------------------------------------------------------------------
+# 6.19 DF-SW -------------------------------------------------------------------
 
 site <- "DF-SW"
 
@@ -1293,7 +1294,6 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 # 7. Tidy things up before export -----------------------------------------
 
-
 all_sites <- ggplot(data = output, 
                     mapping = aes(x = Timestamp,
                                   y = waterLevel,
@@ -1302,7 +1302,6 @@ all_sites <- ggplot(data = output,
   theme_bw()
 
 rm(all_sites)
-
 
 #export 
 write_csv(output,paste0(data_dir,"output.csv"))
