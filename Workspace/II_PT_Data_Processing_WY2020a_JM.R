@@ -1,6 +1,6 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Title: waterLevel 
-#Coder: Nate Jones (cnjones7@ua.edu)
+#Coder: Nate Jones (cnjones7@ua.edu) & James Maze (jtmaze@umd.edu)
 #Date: 2/25/2021
 #Purpose: Analysis of 20200508 Download
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,6 +133,7 @@ df<-df %>%
 
 # 6.0 Compare offsets to measured values?  ----------------------------------------------
 
+#Create at tibble with the sensor's measured water level at each site
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 # 6.1 DB-UW1 --------------------------------------------------
@@ -1285,8 +1286,11 @@ checks <- checks %>%
   add_row(Site_Name = site, sensor_wtrlvl = check)
 
 #Append to output file
-output <- output %>% 
-  add_row(temp)
+#output <- output %>% 
+  #add_row(temp)
+
+#output <- output %>% 
+  #filter(!Site_Name == "NB-SW")
 
 #Clean up environment
 rm(site, temp, temp_dy, check, offset_temp)
@@ -1304,6 +1308,6 @@ all_sites <- ggplot(data = output,
 rm(all_sites)
 
 #export 
-write_csv(output,paste0(data_dir,"output.csv"))
+write_csv(output,paste0(data_dir,"output_20200508_JM.csv"))
 
 
