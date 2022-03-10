@@ -1305,6 +1305,14 @@ all_sites <- ggplot(data = output,
   geom_line() +
   theme_bw()
 
+(all_sites)
+
+#Compare the PT measurements to the field log
+checks <- checks %>% 
+  filter(!is.na(Site_Name)) %>% 
+  left_join(., field_logs)
+
+
 rm(all_sites)
 
 #export 
