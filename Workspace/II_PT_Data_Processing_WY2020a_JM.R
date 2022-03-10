@@ -10,6 +10,7 @@
 #Issues with this download
 # JA-SW wacky around Apr 19th & Mar 2nd. Cut out those values.
 # NB-SW well casing broke. Needed to change the offset halfway through.
+# !!!Field measurements do not match site at TA-SW, ND-SW, NB-SW & QB-UW1
 
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,7 +65,7 @@ field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\well_log.csv"))
 
 #create df of site name, sonde_id, and measured offset
 field_logs<-field_logs %>% 
-  select(Site_Name, Sonde_ID, Relative_Water_Level_m)
+  select(Site_Name, Sonde_ID, Relative_Water_Level_m, Notes)
 
 #Check to make sure pt files match field logs
 check_fun(pt_files, field_logs)
@@ -124,7 +125,8 @@ rm(gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro_files, baro, baro_index)
 df<-df %>% 
   mutate(
     pressureGauge = pressureAbsolute-pressureBaro, 
-    waterHeight   = pressureGauge/9.81)
+    waterHeight   = pressureGauge/9.81) %>% 
+  select(-c(pressureAbsolute, pressureBaro, pressureGauge, Relative_Water_Level_m))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 6: Calculate waterLevel -------------------------------------------------
@@ -150,7 +152,6 @@ offset_temp <- offset %>%
 temp<-df %>% 
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
-  mutate(level = 0) %>% 
   filter(!is.na(waterLevel)) %>% 
   select(Timestamp, waterLevel, Site_Name)
 
@@ -1298,6 +1299,9 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 # 7. Tidy things up before export -----------------------------------------
 
+
+#Plot all the sites together. Maybe something looks weird
+
 all_sites <- ggplot(data = output, 
                     mapping = aes(x = Timestamp,
                                   y = waterLevel,
@@ -1307,13 +1311,25 @@ all_sites <- ggplot(data = output,
 
 (all_sites)
 
+rm(all_sites)
+
 #Compare the PT measurements to the field log
 checks <- checks %>% 
-  filter(!is.na(Site_Name)) %>% 
-  left_join(., field_logs)
+  left_join(., field_logs) 
 
+checks <- checks %>% 
+  filter(!Site_Name == "na") %>% 
+  mutate(measured_diff = as.numeric(sensor_wtrlvl) - as.numeric(Relative_Water_Level_m)) 
 
-rm(all_sites)
+checks_plot <- ggplot(data = checks,
+                       mapping = aes(x = measured_diff)) +
+  geom_dotplot()
+
+(checks_plot)
+
+problems <- checks %>% 
+  select(c(measured_diff, Notes, Site_Name)) %>% 
+  filter(measured_diff >= 0.05 | measured_diff <= -0.05)
 
 #export 
 write_csv(output,paste0(data_dir,"output_20200508_JM.csv"))
