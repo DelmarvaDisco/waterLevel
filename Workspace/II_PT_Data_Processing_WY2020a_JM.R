@@ -133,7 +133,7 @@ df<-df %>%
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# 6.0 Compare offsets to measured values?  ----------------------------------------------
+# 6.0 Compare sensors to fields measured values  ----------------------------------------------
 
 #Create at tibble with the sensor's measured water level at each site
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
