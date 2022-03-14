@@ -8,11 +8,9 @@
 #James started processing from here
 
 #Issues with this download
-# JA-SW wacky around Apr 19th & Mar 2nd. Cut out those values.
+# !!!Field measurements very bad for DB-SW, ND-SW, QB-UW1
 # NB-SW well casing broke. Needed to change the offset halfway through.
-# !!!Field measurements do not match sites
-# DB-SW not matching up btwn May 2020 and Oct 2020 downloads...
-# Extra filtering at a few sites
+# Extra filtering at a few sites (QB-UW2, JA-SW)
 
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -79,7 +77,7 @@ df <- df %>% left_join(., field_logs)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Read the offset file for wells ----------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Some quick notes aobut our definition of offset
+#Some quick notes about our definition of offset
 #   waterLevel = waterHeight + offset
 #   offset = waterLevel - waterHeight
 
@@ -135,9 +133,8 @@ df<-df %>%
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# 6.0 Compare sensors to fields measured values  ----------------------------------------------
+# 6.0 Table comparing sensor's values to field measured values  ----------------------------------------------
 
-#Create at tibble with the sensor's measured water level at each site
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 # 6.1 DB-UW1 --------------------------------------------------
@@ -1336,6 +1333,9 @@ checks_plot <- ggplot(data = checks,
 problems <- checks %>% 
   select(c(measured_diff, Notes, Site_Name)) %>% 
   filter(measured_diff >= 0.05 | measured_diff <= -0.05)
+
+#Write the checks file (for now)
+write_csv(checks,paste0(data_dir,"checks_20200508_JM.csv"))
 
 #Remove duplicates from the output file
 output <- unique(output)
