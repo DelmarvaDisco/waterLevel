@@ -6,9 +6,10 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Issues with this download
-# What is the offset measurement for TS-SW. Check JM field notes?
-# DB-SW, ND-SW is not matching up between May 2020 and Oct 2020 downloads
-# Extra filtering on TB-UW2
+# What is the offset measurement for TS-SW (temporary well). Check JM field notes?
+# Discrepancies between sensors and field measurements at TB-UW2, QB-UW1, ND-SW, NB-SW & DB-SW
+# DB-SW, ND-SW (well pushed deeper), NB-SW (new casing) is not matching up between May 2020 and Oct 2020 downloads
+# Extra filtering for TB-UW2
 
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,7 +142,6 @@ checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 #Read in the previous output table
 dt <- read_csv("data/output_20200508_JM.csv")
-
 
 # 6.0 DB-UW1 ---------------------------------------------------------------------
 
@@ -1121,7 +1121,6 @@ output <- output %>% add_row(temp)
 
 rm(site, temp, temp_dy, check, offset_temp, temp2)
 
-
 # 6.23 JC-SW --------------------------------------------------------------------
 site <- "JC-SW"
 
@@ -1327,6 +1326,8 @@ problems <- checks %>%
 
 #export 
 output <- unique(output)
-  
+
+write_csv(checks, paste0(data_dir, "checks_20201015_JM.csv"))
+
 write_csv(output, paste0(data_dir, "output_20201015_JM.csv")) 
 
