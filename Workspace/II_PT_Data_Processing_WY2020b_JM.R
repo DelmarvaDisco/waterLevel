@@ -1,12 +1,13 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Title: waterLevel 
-#Coder: Nate Jones (cnjones7@ua.edu)
-#Date: 2/25/2021
-#Purpose: Analysis of 20200508 Download
+#Coder: Nate Jones (cnjones7@ua.edu) & James Maze (jtmaze@umd.edu)
+#Date: 3/10/2022
+#Purpose: Analysis of 20201015 Download
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Issues with this download
-# 10258763   Extra PT!
+# What is the offset measurement for TS-SW. Check JM field notes?
+
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Organize workspace
@@ -14,8 +15,8 @@
 # Step 3: Determine offset for each well
 # Step 4: Baro Data
 # Step 5: Water Depth
-# Step 6: QAQC
-# Step 7: Print
+# Step 6: Apply the offset 
+# Step 7: Export the data
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Setup Workspace-------------------------------------------------------
@@ -105,7 +106,7 @@ qb_baro_fun<-approxfun(qb_baro$Timestamp, qb_baro$pressureAbsolute)
 gr_baro<-baro %>% filter(baro_logger == "GR Baro")
 gr_baro_fun<-approxfun(gr_baro$Timestamp, gr_baro$pressureAbsolute)
 
-#aplly baro function to df
+#aply baro function to df
 df<-df %>% 
   #Estimate baro pressure
   mutate(temp_qb = qb_baro_fun(Timestamp), 
@@ -118,8 +119,9 @@ df<-df %>%
 rm(files, pt_files, baro_files, gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro, baro_index)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 5: WaterHeight Data-------------------------------------------------------
+# Step 5: WaterHeight Calculation-------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #Estimate waterHeight
 df<-df %>% 
   mutate(
@@ -128,21 +130,21 @@ df<-df %>%
   select(-c(pressureAbsolute, pressureBaro, pressureGauge, Relative_Water_Level_m))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 6: Calculate waterLevel -------------------------------------------------
+# Step 6: Calculate waterLevel using the offset -------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+#Use the offset to convert waterHeight to waterLevel
+df<-df %>% 
+  left_join(., offset) %>% 
+  mutate(waterLevel = waterHeight + offset)
 
-# 6.0 Make table to compare sensors to measured values --------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 7: QAQC ----------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# 7.0 Make table to compare sensors to measured values --------------------
 
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 7: Apply offset and export ----------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#epxort df
-df<-df %>% 
-  left_join(.,index) %>% 
-  mutate(waterLevel = waterHeight + offset)
 
 #export 
 write_csv(df,paste0(data_dir,"output.csv")) 
