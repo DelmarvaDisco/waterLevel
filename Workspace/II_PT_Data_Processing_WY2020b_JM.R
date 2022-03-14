@@ -18,7 +18,7 @@
 # Step 3: Determine offset for each well
 # Step 4: Baro Data
 # Step 5: Water Depth
-# Step 6: Apply the offset 
+# Step 6: Apply the offset and QAQC
 # Step 7: Export the data
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
