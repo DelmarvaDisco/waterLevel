@@ -490,7 +490,7 @@ checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
 output <- output %>% add_row(temp)
 
 #Clean up environment
-rm(site, temp, temp_dy, check, offset_temp)
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.8 TB-UW1 ---------------------------------------------------------------------
 site <- "TB-UW1"
@@ -509,7 +509,11 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp_dy <- temp %>% mutate(waterLevel = waterLevel + 100)
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
 
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
@@ -528,7 +532,7 @@ checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
 output <- output %>% add_row(temp)
 
 #Clean up environment
-rm(site, temp, temp_dy, check, offset_temp)
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.9 TB-UW2 ------------------------------------------------------------------
 site <- "TB-UW2"
@@ -551,7 +555,11 @@ temp <- temp %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp_dy <- temp %>% mutate(waterLevel = waterLevel + 100)
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
 
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
@@ -570,7 +578,7 @@ checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
 output <- output %>% add_row(temp)
 
 #Clean up environment
-rm(site, temp, temp_dy, check, offset_temp)
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.11 TB-UW3 -------------------------------------------------------------
 site <- "TB-UW3"
@@ -589,7 +597,11 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp_dy <- temp %>% mutate(waterLevel = waterLevel + 100)
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
 
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
@@ -608,7 +620,7 @@ checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
 output <- output %>% add_row(temp)
 
 #Clean up environment
-rm(site, temp, temp_dy, check, offset_temp)
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.12 TB-SW -------------------------------------------------------------------
 site <- "TB-SW"
@@ -627,7 +639,11 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp_dy <- temp %>% mutate(waterLevel = waterLevel + 100)
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
 
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
@@ -646,10 +662,9 @@ checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
 output <- output %>% add_row(temp)
 
 #Clean up environment
-rm(site, temp, temp_dy, check, offset_temp)
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.13 TA-SW --------------------------------------------------------------
-
 site <- "TA-SW"
 
 #Find the offset
@@ -666,7 +681,11 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp_dy <- temp %>% mutate(waterLevel = waterLevel + 100)
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
 
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
@@ -685,7 +704,7 @@ checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
 output <- output %>% add_row(temp)
 
 #Clean up environment
-rm(site, temp, temp_dy, check, offset_temp)
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.14 TI-SW --------------------------------------------------------------------
 site <- "TI-SW"
@@ -704,7 +723,11 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp_dy <- temp %>% mutate(waterLevel = waterLevel + 100)
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
 
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
@@ -723,7 +746,7 @@ checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
 output <- output %>% add_row(temp)
 
 #Clean up environment
-rm(site, temp, temp_dy, check, offset_temp)
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.15 --------------------------------------------------------------------
 
