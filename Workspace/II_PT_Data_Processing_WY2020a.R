@@ -48,8 +48,8 @@ data_dir<-"data\\"
 
 #list pt, baro, and log file locations
 files<-list.files(paste0(data_dir, "20200508_Downloads\\export"), full.names =  TRUE) 
-  pt_files<-files[!str_detect(files, "log")]
-  pt_files<-pt_files[!str_detect(pt_files, "Baro")]
+pt_files<-files[!str_detect(files, "log")]
+pt_files<-pt_files[!str_detect(pt_files, "Baro")]
 field_logs<-paste0(data_dir, 'well_log.csv')
 
 #gather pt data
@@ -71,7 +71,7 @@ rm(check_fun_errors)
 
 #join to master df
 df <- df %>% left_join(., field_logs) 
-  
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Determine offset for each piezometer----------------------------------
