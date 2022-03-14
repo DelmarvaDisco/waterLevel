@@ -1287,8 +1287,8 @@ checks <- checks %>%
   add_row(Site_Name = site, sensor_wtrlvl = check)
 
 #Append to output file
-#output <- output %>% 
-  #add_row(temp)
+output <- output %>% 
+  add_row(temp)
 
 #output <- output %>% 
   #filter(!Site_Name == "NB-SW")
