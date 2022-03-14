@@ -1301,6 +1301,7 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 # 7. Tidy things up before export -----------------------------------------
 
+checks <- unique(checks)
 
 #Plot all the sites together. Maybe something looks weird
 all_sites <- ggplot(data = output, 

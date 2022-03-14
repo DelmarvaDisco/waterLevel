@@ -1245,7 +1245,7 @@ output <- output %>% add_row(temp)
 
 rm(site, temp, temp_dy, check, offset_temp, temp2)
 
-# TS-SW -------------------------------------------------------------------
+# 6.27 TS-SW -------------------------------------------------------------------
 site <- "TS-SW"
 
 # #Find the offset !!! Need to figure out for temporary well!!!###
@@ -1288,9 +1288,44 @@ rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 7.0 Aggregate and export ------------------------------------------------
 
+#Plot all the sites together. Maybe something looks weird
+all_sites <- ggplot(data = output, 
+                    mapping = aes(x = Timestamp,
+                                  y = waterLevel,
+                                  color = Site_Name)) +
+  geom_line() +
+  theme_bw()
+
+(all_sites)
+
+rm(all_sites)
+
+#Compare the PT measurements to the field log
+
+checks <- unique(checks)
+
+checks <- checks %>% 
+  left_join(., field_logs) 
+
+#Calculate the difference between sensor and field measurements
+checks <- checks %>% 
+  filter(!Site_Name == "na") %>% 
+  mutate(measured_diff = as.numeric(sensor_wtrlvl) - as.numeric(Relative_Water_Level_m)) 
+
+#Dot plot showing distributions of the measurement discrepencies
+checks_plot <- ggplot(data = checks,
+                      mapping = aes(x = measured_diff)) +
+  theme_bw() +
+  geom_dotplot()
+
+(checks_plot)
+
+#Filter the sites with problematic offsets
+problems <- checks %>% 
+  select(c(measured_diff, Notes, Site_Name)) %>% 
+  filter(measured_diff >= 0.05 | measured_diff <= -0.05)
 
 #export 
-
 output <- unique(output)
   
 write_csv(output, paste0(data_dir, "output_20201015_JM.csv")) 
