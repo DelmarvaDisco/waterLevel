@@ -10,7 +10,9 @@
 #Issues with this download
 # JA-SW wacky around Apr 19th & Mar 2nd. Cut out those values.
 # NB-SW well casing broke. Needed to change the offset halfway through.
-# !!!Field measurements do not match site at TA-SW, ND-SW, NB-SW & QB-UW1
+# !!!Field measurements do not match sites
+# DB-SW not matching up btwn May 2020 and Oct 2020 downloads...
+# Extra filtering at a few sites
 
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
