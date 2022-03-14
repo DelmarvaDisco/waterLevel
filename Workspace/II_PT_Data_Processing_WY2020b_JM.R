@@ -37,6 +37,7 @@ source("functions//file_fun.R")
 source("functions//dygraph_ts_fun.R")
 source("functions//download_fun.R")
 source("functions//db_get_ts.R")
+source("functions//fun_anomalous.R")
 
 #Define data directory
 data_dir<-"data\\20201015_Downloads\\"
