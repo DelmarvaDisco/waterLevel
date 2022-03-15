@@ -49,12 +49,12 @@ source("functions//fun_anomalous.R")
 data_dir <- "data//20210525_Downloads//"
 
 #list pt, baro, and log file locations
-pt_files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
-pt_files<-pt_files[!str_detect(pt_files, "log")]
-pt_files<-pt_files[!str_detect(pt_files, "Baro")]
+files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
+pt_files<-files[!str_detect(files, "log")]
+pt_files<-files[!str_detect(files, "Baro")]
 
 #gather pt data
-df<-pt_files %>% map_dfr(download_fun) 
+df<-files %>% map_dfr(download_fun) 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Field worksheets -------------------------------------------------------
@@ -70,16 +70,17 @@ rm(check_fun_errors)
 
 #create df of site name, sonde_id, and measured water level & Notes
 field_logs<-field_logs %>% 
-  select(Site_Name, Sonde_ID, Relative_water_level_m, Notes)
+  select(Site_Name, Sonde_ID, Relative_water_level_m, Notes) %>% 
+  mutate(Relative_water_level_m = as.numeric(Relative_water_level_m))
 
 #join to master df make Sonde_ID a character
 df$Sonde_ID <- as.character(df$Sonde_ID)
 field_logs$Sonde_ID <- as.character(field_logs$Sonde_ID)
 
-dt<-df %>% left_join(., field_logs)
+df<-df %>% left_join(., field_logs)
  
 #!!! download_fun didn't recognize DB-SW's SN. Wonky column name. Manual fix here. 
-dt <- dt %>% 
+df <- df %>% 
   mutate(Sonde_ID = if_else(is.na(Sonde_ID), "10258771", Sonde_ID)) %>% 
   mutate(Site_Name = if_else(is.na(Site_Name), "DB-SW", Site_Name))
 
@@ -87,17 +88,77 @@ dt <- dt %>%
 # Step 3: Well offsets -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+#Some quick notes aobut our definition of offset
+#   waterLevel = waterHeight + offset
+#   offset = waterLevel - waterHeight
+
+#Read offset file
+offset<-read_csv("data/Database Information/offset.csv")
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 4: Baro data -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+baro_index<-read_csv("data//Database Information//baro_assignment.csv") 
+
+#Join baro index to df
+df<-df %>% left_join(.,baro_index)
+
+#download baro information
+baro_files<- files %>% as_tibble() %>%  filter(str_detect(value,"Baro")) %>% as_vector()
+baro<-lapply(baro_files, download_fun) %>% bind_rows()
+
+#Assign Baro logger to each row
+baro<-baro %>% mutate(baro_logger = ifelse(Sonde_ID==10589038, "QB Baro", "GR Baro"))
+
+#Create interpolation functions 
+qb_baro<-baro %>% filter(baro_logger == "QB Baro")
+qb_baro_fun<-approxfun(qb_baro$Timestamp, qb_baro$pressureAbsolute)
+gr_baro<-baro %>% filter(baro_logger == "GR Baro")
+gr_baro_fun<-approxfun(gr_baro$Timestamp, gr_baro$pressureAbsolute)
+
+#aply baro function to df
+df<-df %>% 
+  #Estimate baro pressure
+  mutate(temp_qb = qb_baro_fun(Timestamp), 
+         temp_gr = gr_baro_fun(Timestamp)) %>% 
+  #Now select based on sonde
+  mutate(pressureBaro = if_else(baro_logger == "GR Baro", temp_gr, temp_qb)) %>% 
+  #remove unwanted rows
+  select(-temp_gr, -temp_qb, -download_date)
+
+rm(files, pt_files, baro_files, gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro, baro_index)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 5: Calculate water depth -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+#Estimate waterHeight
+df<-df %>% 
+  mutate(
+    pressureGauge = pressureAbsolute-pressureBaro, 
+    waterHeight   = pressureGauge/9.81) %>% 
+  select(-c(pressureAbsolute, pressureBaro, pressureGauge, Relative_water_level_m))
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 6: Apply offset and QAQC -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#Create a checks table comparing sensors to field measurements
+checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
+
+#Read in the previous output tables
+dx <- read_csv("data/output_20200508_JM.csv")
+dy <- read.csv("data/output_20201015_JM.csv")
+
+dt <- rbind(dx, dy)
+
+rm(dx, dy)
+
+# 6.0 DB-SW ---------------------------------------------------------------
+
+
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 7: Export the data -------------------------------------------------------
