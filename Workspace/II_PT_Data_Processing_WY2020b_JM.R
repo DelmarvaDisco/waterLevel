@@ -143,6 +143,10 @@ checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 #Read in the previous output table
 dt <- read_csv("data/output_20200508_JM.csv")
 
+dt <- dt %>% 
+  mutate(Timestamp = make_datetime(Timestamp, tz = "GMT")) %>% 
+  filter(!is.na(Timestamp))
+
 # 6.0 DB-UW1 ---------------------------------------------------------------------
 
 #List the site in question
@@ -1325,7 +1329,8 @@ problems <- checks %>%
   filter(measured_diff >= 0.05 | measured_diff <= -0.05)
 
 #export 
-output <- unique(output)
+output <- unique(output) %>% 
+  mutate(Timestamp = make_datetime(Timestamp, tz = "GMT"))
 
 write_csv(checks, paste0(data_dir, "checks_20201015_JM.csv"))
 

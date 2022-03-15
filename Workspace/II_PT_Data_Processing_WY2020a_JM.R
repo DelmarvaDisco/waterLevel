@@ -1338,7 +1338,9 @@ problems <- checks %>%
 write_csv(checks,paste0(data_dir,"checks_20200508_JM.csv"))
 
 #Remove duplicates from the output file
-output <- unique(output)
+output <- unique(output) %>% 
+  mutate(Timestamp = make_datetime(Timestamp, tz = "GMT"))
+
 #export 
 write_csv(output,paste0(data_dir,"output_20200508_JM.csv"))
 
