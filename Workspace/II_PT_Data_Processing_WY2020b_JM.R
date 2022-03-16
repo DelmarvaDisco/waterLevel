@@ -141,11 +141,12 @@ df<-df %>%
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 #Read in the previous output table
-dt <- read_csv("data/output_20200508_JM.csv")
+dt <- read_csv("data/output_20200508_JM.csv") 
 
 dt <- dt %>% 
-  mutate(Timestamp = make_datetime(Timestamp, tz = "GMT")) %>% 
-  filter(!is.na(Timestamp))
+  mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT"))
+
+
 
 # 6.0 DB-UW1 ---------------------------------------------------------------------
 
@@ -1323,7 +1324,7 @@ checks_plot <- ggplot(data = checks,
 
 (checks_plot)
 
-#Filter the sites with problematic offsets
+#Filter the sites with problematic 
 problems <- checks %>% 
   select(c(measured_diff, Notes, Site_Name)) %>% 
   filter(measured_diff >= 0.05 | measured_diff <= -0.05)
