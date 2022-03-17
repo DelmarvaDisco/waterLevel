@@ -9,7 +9,7 @@
 
 #  - DB-SW serial number did not read in when using the download function. 
 #    The column name was weird ("Abs Pres, kPa (LGR S/N: 10258771, SEN S/N: 10258771, LBL: PSI)")
-#    Since the serial number had LBL : PSI after it, download_fun broke. Manually assigned SN to the site
+#    Since the SN had "LBL : PSI "after it, download_fun broke. Manually assigned SN to the site
 #    in Step #2
 #  - 
 
@@ -73,7 +73,7 @@ field_logs<-field_logs %>%
   select(Site_Name, Sonde_ID, Relative_water_level_m, Notes) %>% 
   mutate(Relative_water_level_m = as.numeric(Relative_water_level_m))
 
-#join to master df make Sonde_ID a character
+#Join field log to master df. First, make Sonde_ID a character
 df$Sonde_ID <- as.character(df$Sonde_ID)
 field_logs$Sonde_ID <- as.character(field_logs$Sonde_ID)
 
@@ -151,7 +151,7 @@ checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 dx <- read_csv("data/output_20200508_JM.csv")
 
-dy <- read.csv("data/output_20201015_JM.csv")
+dy <- read_csv("data/output_20201015_JM.csv")
 
 dt <- bind_rows(dx, dy)
 
