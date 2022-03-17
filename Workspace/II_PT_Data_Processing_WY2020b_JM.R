@@ -47,13 +47,13 @@ source("functions//fun_anomalous.R")
 data_dir<-"data\\20201015_Downloads\\"
 
 #list pt, baro, and log file locations
-files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
-pt_files<-files[!str_detect(files, "log")]
-pt_files<-pt_files[!str_detect(pt_files, "Baro")]
-field_logs<-paste0(data_dir, 'well_log.csv')
+files <- list.files(paste0(data_dir, "export"), full.names =  TRUE) 
+pt_files <- files[!str_detect(files, "log")]
+pt_files <- pt_files[!str_detect(pt_files, "Baro")]
+field_logs <- paste0(data_dir, 'well_log.csv')
 
 #gather pt data
-df<-pt_files %>% map_dfr(download_fun)
+df <- pt_files %>% map_dfr(download_fun)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 2: Field Worksheet--------------------------------------------------------
@@ -142,11 +142,9 @@ checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 #Read in the previous output table
 dt <- read_csv("data/output_20200508_JM.csv") 
-
+#Just incase the maker sure timestamps are in datetime format
 dt <- dt %>% 
   mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT"))
-
-
 
 # 6.0 DB-UW1 ---------------------------------------------------------------------
 
@@ -1331,7 +1329,9 @@ problems <- checks %>%
 
 #export 
 output <- unique(output) %>% 
-  mutate(Timestamp = make_datetime(Timestamp, tz = "GMT"))
+  #convert Timestamp to character, so write_csv doesn't screw up formating. 
+  mutate(Timestamp = as.character(Timestamp))
+
 
 write_csv(checks, paste0(data_dir, "checks_20201015_JM.csv"))
 
