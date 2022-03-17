@@ -1265,12 +1265,56 @@ output <- output %>% add_row(temp)
 #Clean up environment  
 rm(site, temp, temp_dy, check, offset_temp, temp2)
 
-
-
-
-
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 7: Export the data -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+#Look at individual sites of interest
+all_sites <- output #%>% 
+  #filter()
+
+all_sites_plot <- ggplot(data = all_sites, 
+                    mapping = aes(x = Timestamp,
+                                  y = waterLevel,
+                                  color = Site_Name)) +
+  geom_line() +
+  theme_bw()
+
+(all_sites_plot)
+
+rm(all_sites, all_sites_plot)
+
+#Compare the PT measurements to the field log
+
+checks <- unique(checks)
+
+checks <- checks %>% 
+  left_join(., field_logs) 
+
+#Calculate the difference between sensor and field measurements
+checks <- checks %>% 
+  filter(!Site_Name == "na") %>% 
+  mutate(measured_diff = as.numeric(sensor_wtrlvl) - as.numeric(Relative_water_level_m)) 
+
+#Dot plot showing distributions of the measurement discrepencies
+checks_plot <- ggplot(data = checks,
+                      mapping = aes(x = measured_diff)) +
+  theme_bw() +
+  geom_dotplot()
+
+(checks_plot)
+
+#Filter the sites with problematic 
+problems <- checks %>% 
+  select(c(measured_diff, Notes, Site_Name)) %>% 
+  filter(measured_diff >= 0.05 | measured_diff <= -0.05)
+
+#export 
+output <- unique(output) %>% 
+  #convert Timestamp to character, so write_csv doesn't screw up formating. 
+  mutate(Timestamp = as.character(Timestamp))
+
+
+write_csv(checks, paste0(data_dir, "checks_20210525_JM.csv"))
+
+write_csv(output, paste0(data_dir, "output_20210525_JM.csv")) 
