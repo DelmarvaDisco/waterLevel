@@ -1301,6 +1301,7 @@ rm(site, temp, temp_dy, check, offset_temp)
 checks <- unique(checks)
 
 #Plot all the sites together. Maybe something looks weird
+
 all_sites <- ggplot(data = output, 
                     mapping = aes(x = Timestamp,
                                   y = waterLevel,
@@ -1339,7 +1340,8 @@ write_csv(checks,paste0(data_dir,"checks_20200508_JM.csv"))
 
 #Remove duplicates from the output file
 output <- unique(output) %>% 
-  mutate(Timestamp = make_datetime(Timestamp, tz = "GMT"))
+  #convert Timestamp to character, so write_csv doesn't screw up formating. 
+  mutate(Timestamp = as.character(Timestamp))
 
 #export 
 write_csv(output,paste0(data_dir,"output_20200508_JM.csv"))
