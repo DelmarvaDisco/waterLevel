@@ -17,6 +17,9 @@ library(xts)
 library(readxl)
 library(tidyverse)
 
+#Functions
+source("functions//dygraph_ts_fun.R")
+
 #Set data directory
 data_dir <- "data//"
 
@@ -76,17 +79,57 @@ checks <- files[str_detect(files, "checks_")]
 checks <- checks %>% 
   map_dfr(download_checks) 
 
-#Goofed up my column names.  
+#Goofed up my column names, and a few things in checks table fix this later.
 checks <- checks %>% 
   mutate(Relative_water_level_m = coalesce(Relative_Water_Level_m, 
                                            Relative_water_level_m)) %>% 
-  select(-Relative_Water_Level_m)
+  select(-Relative_Water_Level_m) %>% 
+  filter(!is.na(Sonde_ID))
 
-nas <- checks %>% 
-  filter(is.na(Relative_water_level_m))
+# 4.2 Download the J. Maze outputs ------------------------------------------------
 
-# 4.2 Download the outputs ------------------------------------------------
+JM_output <- files[str_detect(files, "output_")]
 
+df <- JM_output %>% 
+  map_dfr(read_csv)
+
+
+# 4.3 Plot the checks --------------------------------------------------
+
+checks_interest <- checks #%>% 
+  #filter(Site_Name == c("", ""))
+
+checks_plot <- ggplot(data = checks_interest, 
+                      aes(x = Site_Name,
+                          y = measured_diff,
+                          fill = file)) +
+  geom_col(position = position_dodge(width = 0.75,
+                                     preserve = "single"),
+           color = "black",
+           width = 0.75) + 
+  theme_bw() +
+  theme(axis.text = element_text(size = 8,
+                                 face = "bold",
+                                 angle = 90),
+        axis.title.x = element_blank()) +
+  ylab("Measured diff meters (sensor - field)")
+  
+
+(checks_plot)
+
+
+# Dygraph of certain sites ------------------------------------------------
+
+df_interest <- df %>% 
+  filter(Site_Name == c("JA-SW"))
+
+xts_interest <- df_interest %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  pivot_wider(id_cols = Timestamp,
+              names_from = Site_Name,
+              values_from = waterLevel)
+
+dygraph_ts_fun(xts_interest)
 
   
 
