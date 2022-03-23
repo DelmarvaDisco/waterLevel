@@ -137,15 +137,24 @@ df<-df %>%
 
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
+offset_tests <- read_csv(paste0(data_dir, "Database Information\\offset_tests.csv"))
+
 # 6.1 DB-UW1 --------------------------------------------------
 
 #List the site in question
 site <- "DB-UW1"
 
-#Find the offset
-offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+#Find the offsets for a given site
+offset_temp <- offset_tests %>% 
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp<-df %>% 
