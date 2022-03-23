@@ -1141,7 +1141,8 @@ temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
 temp <- temp %>% 
   filter(Timestamp <= "2020-03-01 12:15:00" | Timestamp >= "2020-03-03 3:15:00") %>% 
   filter(Timestamp <= "2020-04-17 12:15:00" | Timestamp >= "2020-04-17 19:00:00") %>% 
-  filter(Timestamp <= "2020-04-19 8:15:00" | Timestamp >= "2020-04-19 20:15:00")
+  filter(Timestamp <= "2020-04-19 8:15:00" | Timestamp >= "2020-04-19 20:15:00") %>% 
+  filter(Timestamp <= "2020-05-10 3:15:00")
 
 #plot in dygraphs
 temp_dy <- temp %>% 
@@ -1530,7 +1531,7 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.29 Jones Rd South Catchment Outlet -----------------------------------------
 
-site <- "Jones Rd South Catchment Outlet"
+site <- "Jones Road South Catchment Outlet"
 
 #Find the offsets for a given site
 offset_temp <- offset %>% 
@@ -1581,7 +1582,7 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 # 6.30 Jones Rd North Catchment Outlet -----------------------------------------
 
-site <- "Jones Rd North Catchment Outlet"
+site <- "Jones Road North Catchment Outlet"
 
 #Find the offsets for a given site
 offset_temp <- offset %>% 
@@ -1705,7 +1706,7 @@ checks <- checks %>%
 #Calculate the difference between sensor and field measurements
 checks <- checks %>% 
   filter(!Site_Name == "na") %>% 
-  mutate(measured_diff = as.numeric(sensor_wtrlvl) - as.numeric(Relative_Water_Level_m)) 
+  mutate(measured_diff = as.numeric(sensor_wtrlvl) - as.numeric(Relative_water_level_m)) 
 
 #Dot plot showing distributions of the measurement discrepencies
 checks_plot <- ggplot(data = checks,
@@ -1721,7 +1722,7 @@ problems <- checks %>%
   filter(measured_diff >= 0.05 | measured_diff <= -0.05)
 
 #Write the checks file (for now)
-write_csv(checks,paste0(data_dir,"checks_20200508_JM.csv"))
+write_csv(checks, paste0(data_dir,"checks_20200508_JM.csv"))
 
 #Remove duplicates from the output file
 output <- unique(output) %>% 
@@ -1729,6 +1730,6 @@ output <- unique(output) %>%
   mutate(Timestamp = as.character(Timestamp))
 
 #export 
-write_csv(output,paste0(data_dir,"output_20200508_JM.csv"))
+write_csv(output, paste0(data_dir,"output_20200508_JM.csv"))
 
 
