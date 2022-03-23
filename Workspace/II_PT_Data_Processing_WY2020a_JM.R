@@ -94,7 +94,7 @@ baro_index<-read_csv(paste0(data_dir, "Database Information\\baro_assignment.csv
 df<-df %>% left_join(.,baro_index)
 
 #download baro information
-baro_files<- files %>% as_tibble() %>%  filter(str_detect(value,"Baro")) %>% as_vector()
+baro_files <- paste0(data_dir, "all_baros\\", list.files(path = paste0(data_dir, "all_baros")))
 baro<-lapply(baro_files, download_fun) %>% bind_rows()
 
 #Assign Baro logger to each row
