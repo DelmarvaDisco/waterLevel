@@ -137,15 +137,13 @@ df<-df %>%
 
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
-offset_tests <- read_csv(paste0(data_dir, "Database Information\\offset_tests.csv"))
-
 # 6.1 DB-UW1 --------------------------------------------------
 
 #List the site in question
 site <- "DB-UW1"
 
 #Find the offsets for a given site
-offset_temp <- offset_tests %>% 
+offset_temp <- offset %>% 
   filter(Site_Name == site) 
 
 #Inspect the notes and version number
@@ -195,10 +193,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 #Define site 
 site <- "QB-UW1"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -240,10 +245,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 #List the site in question
 site <- "DB-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -284,10 +296,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "ND-UW1"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -327,10 +346,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 # 6.5 ND-UW2  ---------------------------------------------------------
 site <- "ND-UW2"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -371,10 +397,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "ND-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -415,10 +448,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "QB-UW2"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -463,10 +503,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 # 6.9 QB-SW ------------------------------------------------------------
 site <- "QB-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -507,10 +554,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "TB-UW1"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -551,10 +605,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "TB-UW2"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -595,10 +656,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "TB-UW3"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -639,10 +707,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "TB-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -683,10 +758,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "TA-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -727,10 +809,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "TI-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -771,10 +860,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "DK-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -815,10 +911,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "DK-UW1"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -859,10 +962,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "DK-UW2"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -903,10 +1013,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "DF-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -947,10 +1064,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "FN-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -991,10 +1115,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "JA-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -1041,10 +1172,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "JB-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -1085,10 +1223,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "JB-UW1"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -1129,10 +1274,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "JB-UW2"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -1173,10 +1325,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "JC-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -1217,10 +1376,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "JC-UW1"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -1261,10 +1427,17 @@ rm(site, temp, temp_dy, check, offset_temp)
 
 site <- "NB-SW"
 
-#Find the offset
+#Find the offsets for a given site
 offset_temp <- offset %>% 
-  filter(Site_Name == site) %>% 
-  pull(offset)
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
 #Estimate water level
 temp <- df %>% 
@@ -1305,17 +1478,208 @@ output <- output %>%
 rm(site, temp, temp_dy, check, offset_temp)
 
 
-# TP-CH -------------------------------------------------------------------
+# 6.28 TP-CH -------------------------------------------------------------------
+site <- "TP-CH"
 
+#Find the offsets for a given site
+offset_temp <- offset %>% 
+  filter(Site_Name == site) 
 
-# Jones Rd South Catchment Outlet -----------------------------------------
+#Inspect the notes and version number
+(offset_temp)
 
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
 
-# Jones Rd North Catchment Outlet -----------------------------------------
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
 
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
 
-# Tiger Paw Catchment Outlet ----------------------------------------------
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
 
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
+# 6.29 Jones Rd South Catchment Outlet -----------------------------------------
+
+site <- "Jones Rd South Catchment Outlet"
+
+#Find the offsets for a given site
+offset_temp <- offset %>% 
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
+# 6.30 Jones Rd North Catchment Outlet -----------------------------------------
+
+site <- "Jones Rd North Catchment Outlet"
+
+#Find the offsets for a given site
+offset_temp <- offset %>% 
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
+
+# 6.31 Tiger Paw Catchment Outlet ----------------------------------------------
+
+site <- "Tiger Paw Catchment Outlet"
+
+#Find the offsets for a given site
+offset_temp <- offset %>% 
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
+
+#Estimate water level
+temp <- df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
+
+#plot in dygraphs
+temp_dy <- temp %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% 
+  add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append to output file
+output <- output %>% 
+  add_row(temp)
+
+#Clean up environment
+rm(site, temp, temp_dy, check, offset_temp)
 
 # 7. Tidy things up before export -----------------------------------------
 
