@@ -124,9 +124,9 @@ rm(gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro_files, baro, baro_index)
 #Estimate waterHeight
 df<-df %>% 
   mutate(
-    pressureGauge = pressureAbsolute-pressureBaro, 
-    waterHeight   = pressureGauge/9.81) %>% 
-  select(-c(pressureAbsolute, pressureBaro, pressureGauge, Relative_Water_Level_m))
+    pressureGauge = pressureAbsolute - pressureBaro, 
+    waterHeight   = pressureGauge / 9.81) %>% 
+  select(-c(pressureAbsolute, pressureBaro, pressureGauge, Relative_water_level_m))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 6: Calculate waterLevel -------------------------------------------------
