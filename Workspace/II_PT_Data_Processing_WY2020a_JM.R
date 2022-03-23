@@ -65,7 +65,7 @@ field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\well_log.csv"))
 
 #create df of site name, sonde_id, and measured offset
 field_logs<-field_logs %>% 
-  select(Site_Name, Sonde_ID, Relative_Water_Level_m, Notes)
+  select(Site_Name, Sonde_ID, Relative_water_level_m, Notes)
 
 #Check to make sure pt files match field logs
 check_fun(pt_files, field_logs)
@@ -1294,6 +1294,18 @@ output <- output %>%
 
 #Clean up environment
 rm(site, temp, temp_dy, check, offset_temp)
+
+
+# TP-CH -------------------------------------------------------------------
+
+
+# Jones Rd South Catchment Outlet -----------------------------------------
+
+
+# Jones Rd North Catchment Outlet -----------------------------------------
+
+
+# Tiger Paw Catchment Outlet ----------------------------------------------
 
 
 # 7. Tidy things up before export -----------------------------------------

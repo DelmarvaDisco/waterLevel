@@ -45,7 +45,7 @@ data_dir <- "data//20211112_Downloads//"
 #list pt, baro, and log file locations
 files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
 pt_files<-files[!str_detect(files, "log")]
-pt_files<-files[!str_detect(files, "Baro")]
+pt_files<-files[!str_detect(files, "baro")]
 
 #gather pt data
 df<-files %>% map_dfr(download_fun) 
@@ -58,7 +58,8 @@ field_logs <- read_csv(paste0(data_dir, "well_log.csv"))
 
 #Get rid of scientific notation from field log
 field_logs <- field_logs %>% 
-  mutate(Relative_Water_Level_m = format(Relative_Water_Level_m, scientific = FALSE))
+  select(c(Relative_water_level_m, Date, Sonde_ID, Site_Name, 
+           Notes, Depth_to_water_m, Well_head_m))
 
 #Check to make sure pt files match field logs
 check_fun(pt_files, field_logs)
