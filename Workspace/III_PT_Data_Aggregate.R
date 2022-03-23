@@ -6,7 +6,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# 1. Libraries and workspace ----------------------------------------------
+# 1. Libraries and work space ----------------------------------------------
 
 
 # Purpose: Compile output.csv data
@@ -98,6 +98,7 @@ df <- JM_output %>%
 
 checks_interest <- checks #%>% 
   #filter(Site_Name == c("", ""))
+  #filter(measured_diff >= 0.05 | measured_diff <= -0.05)
 
 checks_plot <- ggplot(data = checks_interest, 
                       aes(x = Site_Name,
@@ -121,7 +122,7 @@ checks_plot <- ggplot(data = checks_interest,
 # Dygraph of certain sites ------------------------------------------------
 
 df_interest <- df %>% 
-  filter(Site_Name == c("JA-SW"))
+  filter(Site_Name %in% c("TB-UW2", "TB-UW1"))
 
 xts_interest <- df_interest %>% 
   mutate(waterLevel = waterLevel + 100) %>% 
@@ -131,11 +132,10 @@ xts_interest <- df_interest %>%
 
 dygraph_ts_fun(xts_interest)
 
-  
 
 # Xport! ------------------------------------------------------------------
 
-write_csv(df, file = "ouput_data_long.csv")
+
 
 
 

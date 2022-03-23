@@ -78,7 +78,7 @@ field_logs<-field_logs %>%
 df<-df %>% left_join(., field_logs)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 3: Determine offset for each piezometer----------------------------------
+# Step 3: Determine offset for each well ----------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Some quick notes aobut our definition of offset
 #   waterLevel = waterHeight + offset
@@ -88,7 +88,7 @@ df<-df %>% left_join(., field_logs)
 offset<-read_csv("data/Database Information/offset.csv")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 4: Barometric Pressure Data----------------------------------------------
+# Step 4: Barometric Pressure Data ----------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download baro assignment [this may need to be changed manually]
 baro_index<-read_csv("data//Database Information//baro_assignment.csv") 
@@ -122,7 +122,7 @@ df<-df %>%
 rm(files, pt_files, baro_files, gr_baro, qb_baro, gr_baro_fun, qb_baro_fun, baro, baro_index)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 5: WaterHeight Calculation-------------------------------------------------------
+# Step 5: WaterHeight Calculation -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Estimate waterHeight
