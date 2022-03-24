@@ -6,6 +6,10 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Issues with this download
+#  - DB-SW serial number did not read in when using the download function. 
+#    The column name was weird ("Abs Pres, kPa (LGR S/N: 10258771, SEN S/N: 10258771, LBL: PSI)")
+#    Since the SN had "LBL : PSI "after it, download_fun broke. Manually assigned SN to the site
+#    in Step #2
 
 #Steps
 # Step 1: Organize workspace
@@ -40,10 +44,10 @@ source("functions//db_get_ts.R")
 source("functions//fun_anomalous.R")
 
 #data directory
-data_dir <- "data//20211112_Downloads//"
+data_dir <- "data//"
 
 #list pt, baro, and log file locations
-files<-list.files(paste0(data_dir, "export"), full.names =  TRUE) 
+files<-list.files(paste0(data_dir, "20211112_Downloads//export"), full.names =  TRUE) 
 pt_files<-files[!str_detect(files, "log")]
 pt_files<-files[!str_detect(files, "baro")]
 
@@ -54,24 +58,30 @@ df<-files %>% map_dfr(download_fun)
 # Step 2: Setup Workspace-------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download Field Worksheet
-field_logs <- read_csv(paste0(data_dir, "well_log.csv"))
+field_logs <- read_csv(paste0(data_dir, "20211112_Downloads//well_log.csv"))
 
 #Get rid of scientific notation from field log
 field_logs <- field_logs %>% 
   select(c(Relative_water_level_m, Date, Sonde_ID, Site_Name, 
-           Notes, Depth_to_water_m, Well_head_m))
+           Notes, Depth_to_water_m, Well_head_m)) %>% 
+  mutate(Relative_water_level_m = as.numeric(Relative_water_level_m))
 
 #Check to make sure pt files match field logs
 check_fun(pt_files, field_logs)
 
 rm(check_fun_errors)
 
-#create df of site name, sonde_id, and measured water level
-field_logs<-field_logs %>% 
-  select(Site_Name, Sonde_ID, Relative_Water_Level_m, Notes)
+#Join field log to master df. First, make Sonde_ID a character
+df$Sonde_ID <- as.character(df$Sonde_ID)
+field_logs$Sonde_ID <- as.character(field_logs$Sonde_ID)
 
 #join to master df
 df<-df %>% left_join(., field_logs)
+
+#!!! download_fun didn't recognize DB-SW's SN. Wonky column name. Manual fix here. 
+df <- df %>% 
+  mutate(Sonde_ID = if_else(is.na(Sonde_ID), "10258771", Sonde_ID)) %>% 
+  mutate(Site_Name = if_else(is.na(Site_Name), "DB-SW", Site_Name))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 3: Determine offset for each well -------------------------------------------------------
@@ -95,7 +105,7 @@ baro_index<-read_csv("data//Database Information//baro_assignment.csv")
 df<-df %>% left_join(.,baro_index)
 
 #download baro information
-baro_files<- files %>% as_tibble() %>%  filter(str_detect(value,"Baro")) %>% as_vector()
+baro_files <- paste0(data_dir, "all_baros\\", list.files(path = paste0(data_dir, "all_baros")))
 baro<-lapply(baro_files, download_fun) %>% bind_rows()
 
 #Assign Baro logger to each row
@@ -128,7 +138,7 @@ df<-df %>%
   mutate(
     pressureGauge = pressureAbsolute-pressureBaro, 
     waterHeight   = pressureGauge/9.81) %>% 
-  select(-c(pressureAbsolute, pressureBaro, pressureGauge, Relative_Water_Level_m))
+  select(-c(pressureAbsolute, pressureBaro, pressureGauge, Relative_water_level_m))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 6: Calculate waterLevel using the offset & QAQC -------------------------------------------------
@@ -139,16 +149,167 @@ df<-df %>%
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 # Read previous downloads
+dx <- read_csv("data/output_20200508_JM.csv")
+dy <- read_csv("data/output_20201015_JM.csv")
+dz <- read_csv("data/output_20210525_JM.csv")
+
+dt <- bind_rows(dx, dy, dz)
+
+rm(dx, dy, dz)
 
 
 # 6.0 DB-UW1 ------------------------------------------------------------------
+site <- "DB-UW1"
 
+#Find the site's offsets 
+offset_temp <- offset %>% 
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
+
+#Estimate water level
+temp<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#plot in dygraphs
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append processed data to the output table
+output <- temp 
+
+#Clean up environment  
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.1 DB-SW -------------------------------------------------------------------
+site <- "DB-SW"
 
+#Find the site's offsets 
+offset_temp <- offset %>% 
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
+
+#Estimate water level
+temp<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#plot in dygraphs
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append processed data to the output table
+output <- output %>% add_row(temp)
+
+#Clean up environment  
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.2 ND-UW1 ---------------------------------------------------------------------
+site <- "ND-UW1"
 
+#Find the site's offsets 
+offset_temp <- offset %>% 
+  filter(Site_Name == site) 
+
+#Inspect the notes and version number
+(offset_temp)
+
+#Filter based on the correct version number
+offset_temp <- offset_temp %>% 
+  filter(Version_num == "One") %>% 
+  pull(offset) 
+
+#Estimate water level
+temp<-df %>% 
+  filter(Site_Name == site) %>%
+  mutate(waterLevel = waterHeight + offset_temp) %>% 
+  filter(!is.na(waterLevel)) %>% 
+  select(Timestamp, waterLevel, Site_Name)
+
+#remove anomalous values
+temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#plot in dygraphs
+temp2 <- dt %>% 
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>% 
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Extract the last measured water level to check against field sheet
+check <- temp %>% 
+  arrange(desc(Timestamp)) %>% 
+  slice(1:10) %>% 
+  pull(waterLevel) %>% 
+  mean() %>% 
+  as.character()
+
+#Add to the check table
+checks <- checks %>% add_row(Site_Name = site, sensor_wtrlvl = check)
+
+#Append processed data to the output table
+output <- output %>% add_row(temp)
+
+#Clean up environment  
+rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.3 ND-UW2 --------------------------------------------------------------
 
