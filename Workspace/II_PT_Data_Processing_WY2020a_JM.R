@@ -8,7 +8,7 @@
 #James started processing from here
 
 #Issues with this download
-# !!!Field measurements very bad for DB-SW, ND-SW, QB-UW1
+
 # NB-SW well casing broke. Needed to change the offset halfway through.
 # Extra filtering at a few sites (QB-UW2, JA-SW)
 
@@ -158,7 +158,7 @@ offset_temp <- offset_temp %>%
 temp<-df %>% 
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
-  filter(!is.na(waterLevel)) %>% 
+  filter(!is.na(waterLevel)) %>%
   select(Timestamp, waterLevel, Site_Name)
 
 #remove anomalous values
@@ -1529,7 +1529,7 @@ output <- output %>%
 #Clean up environment
 rm(site, temp, temp_dy, check, offset_temp)
 
-# 6.29 Jones Rd South Catchment Outlet -----------------------------------------
+# 6.29 Jones Road South Catchment Outlet -----------------------------------------
 
 site <- "Jones Road South Catchment Outlet"
 
@@ -1580,7 +1580,7 @@ output <- output %>%
 #Clean up environment
 rm(site, temp, temp_dy, check, offset_temp)
 
-# 6.30 Jones Rd North Catchment Outlet -----------------------------------------
+# 6.30 Jones Road North Catchment Outlet -----------------------------------------
 
 site <- "Jones Road North Catchment Outlet"
 
