@@ -157,7 +157,8 @@ dx <- read_csv("data/output_20200508_JM.csv")
 dy <- read_csv("data/output_20201015_JM.csv")
 dz <- read_csv("data/output_20210525_JM.csv")
 
-dt <- bind_rows(dx, dy, dz)
+dt <- bind_rows(dx, dy, dz) %>% 
+  mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT"))
 
 rm(dx, dy, dz)
 

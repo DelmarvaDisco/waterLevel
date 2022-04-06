@@ -8,7 +8,6 @@
 
 # 1. Libraries and work space ----------------------------------------------
 
-
 # Purpose: Compile output.csv data
 remove(list = ls())
 
@@ -16,6 +15,7 @@ library(dygraphs)
 library(xts)
 library(readxl)
 library(tidyverse)
+library(lubridate)
 
 #Functions
 source("functions//dygraph_ts_fun.R")
@@ -79,26 +79,20 @@ checks <- files[str_detect(files, "checks_")]
 checks <- checks %>% 
   map_dfr(download_checks) 
 
-#Goofed up my column names, and a few things in checks table fix this later.
-checks <- checks %>% 
-  mutate(Relative_water_level_m = coalesce(Relative_Water_Level_m, 
-                                           Relative_water_level_m)) %>% 
-  select(-Relative_Water_Level_m) %>% 
-  filter(!is.na(Sonde_ID))
-
 # 4.2 Download the J. Maze outputs ------------------------------------------------
 
 JM_output <- files[str_detect(files, "output_")]
 
 df <- JM_output %>% 
-  map_dfr(read_csv)
-
+  map_dfr(read_csv) %>%  
+  mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT"))
+  
 
 # 4.3 Plot the checks --------------------------------------------------
 
-checks_interest <- checks #%>% 
-  #filter(Site_Name == c("", ""))
-  #filter(measured_diff >= 0.05 | measured_diff <= -0.05)
+checks_interest <- checks %>% 
+  #Checks from latest download aren't reliable (baro missmatch)
+  filter(!file == "data//checks_20211112_JM.csv")
 
 checks_plot <- ggplot(data = checks_interest, 
                       aes(x = Site_Name,
@@ -118,20 +112,27 @@ checks_plot <- ggplot(data = checks_interest,
 
 (checks_plot)
 
-
 # Dygraph of certain sites ------------------------------------------------
 
-df_interest <- df %>% 
-  filter(Site_Name %in% c("TB-UW2", "TB-UW1"))
+df <- df %>% 
+  as_tibble() %>% 
+  mutate(waterLevel = round(waterLevel, digits = 2))
 
-xts_interest <- df_interest %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
-  pivot_wider(id_cols = Timestamp,
-              names_from = Site_Name,
+df <- df %>% 
+  unique()
+
+#Some overlapping data points need to be removed
+df <- df[!duplicated(df[ , c("Timestamp", "Site_Name")]), ]
+
+df_interest <- df %>% 
+  filter(Site_Name %in% c("JA-SW", "JC-SW", "JB-SW")) %>% 
+  mutate(waterLevel = waterLevel + 100) 
+
+df_interest <- df_interest %>% 
+  pivot_wider(names_from = Site_Name,
               values_from = waterLevel)
 
-dygraph_ts_fun(xts_interest)
-
+dygraph_ts_fun(df_interest)
 
 # Xport! ------------------------------------------------------------------
 
