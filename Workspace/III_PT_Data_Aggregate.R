@@ -28,35 +28,35 @@ files <- list.files(paste0("data//"), full.names =  TRUE, recursive = T)
 
 # 2. Prior to April 2019 by N. Jones ------------------------------------------
 
-#Read Choptank WY2019 sheet
-owl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 3)
-gwl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 2)
-swl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 1)
-
-#Merge the sheets 
-dx <- full_join(owl, gwl, by = "Timestamp")
-dx <- full_join(dx, swl, by = "Timestamp")
-rm(owl, gwl, swl)
-
-#Covert everything except "Timestamp" to character, to make merging easier. 
-dx <- dx %>% 
-  mutate_if(is.numeric, as.character)
-
-#Pivot to long format
-dx <- pivot_longer(dx, cols = -c("Timestamp"), 
-                   names_to = "Site_Name", 
-                   values_to = "waterLevel")
-
-#Check make a tibble with list of site names
-site_names <- as_tibble(unique(dx$Site_Name))
+# #Read Choptank WY2019 sheet
+# owl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 3)
+# gwl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 2)
+# swl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 1)
+# 
+# #Merge the sheets 
+# dx <- full_join(owl, gwl, by = "Timestamp")
+# dx <- full_join(dx, swl, by = "Timestamp")
+# rm(owl, gwl, swl)
+# 
+# #Covert everything except "Timestamp" to character, to make merging easier. 
+# dx <- dx %>% 
+#   mutate_if(is.numeric, as.character)
+# 
+# #Pivot to long format
+# dx <- pivot_longer(dx, cols = -c("Timestamp"), 
+#                    names_to = "Site_Name", 
+#                    values_to = "waterLevel")
+# 
+# #Check make a tibble with list of site names
+# site_names <- as_tibble(unique(dx$Site_Name))
 
 # 3. Jones processing Wardinski (Select Sites 2019 - 2020) ------------------------------------------
 
-dt <- files %>% 
-  as_tibble() %>% 
-  filter(str_detect(value,"output.csv")) %>% 
-  as_vector() %>% 
-  map_dfr(function(x) read_csv(x, col_types = list('T', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c')))
+# dt <- files %>% 
+#   as_tibble() %>% 
+#   filter(str_detect(value,"output.csv")) %>% 
+#   as_vector() %>% 
+#   map_dfr(function(x) read_csv(x, col_types = list('T', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c')))
 
 # 4. After Fall 2019 by J. Maze  -------------------------------------------------
 
@@ -91,8 +91,9 @@ df <- JM_output %>%
 # 4.3 Plot the checks --------------------------------------------------
 
 checks_interest <- checks %>% 
+  filter(Site_Name == "QB-UW1")
   #Checks from latest download aren't reliable (baro missmatch)
-  filter(!file == "data//checks_20211112_JM.csv")
+  #filter(!file == "data//checks_20211112_JM.csv")
 
 checks_plot <- ggplot(data = checks_interest, 
                       aes(x = Site_Name,
@@ -116,7 +117,7 @@ checks_plot <- ggplot(data = checks_interest,
 
 df <- df %>% 
   as_tibble() %>% 
-  mutate(waterLevel = round(waterLevel, digits = 2))
+  mutate(waterLevel = round(waterLevel, digits = 4))
 
 df <- df %>% 
   unique()
@@ -125,7 +126,9 @@ df <- df %>%
 df <- df[!duplicated(df[ , c("Timestamp", "Site_Name")]), ]
 
 df_interest <- df %>% 
-  filter(Site_Name %in% c("JA-SW", "JC-SW", "JB-SW")) %>% 
+  filter(Site_Name %in% c("Jones Road South Catchment Outlet", 
+                          "Jones Road North Catchment Outlet",
+                          "Tiger Paw Catchment Outlet")) %>% 
   mutate(waterLevel = waterLevel + 100) 
 
 df_interest <- df_interest %>% 
@@ -136,6 +139,9 @@ dygraph_ts_fun(df_interest)
 
 # Xport! ------------------------------------------------------------------
 
+write_csv(df, paste0(data_dir,"all_data_JM.csv"))
+
+write_csv(checks, paste0(data_dir, "all_chk_JM.csv"))
 
 
 

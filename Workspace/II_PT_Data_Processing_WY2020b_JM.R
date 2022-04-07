@@ -10,6 +10,7 @@
 # Discrepancies between sensors and field measurements at TB-UW2, QB-UW1, ND-SW, NB-SW & DB-SW
 # DB-SW, ND-SW (well pushed deeper), NB-SW (new casing) is not matching up between May 2020 and Oct 2020 downloads
 # Extra filtering for TB-UW2
+# DB-SW required a new offset, bc it was hung loosely in the well. Also, flagged data 8/16/2020-9/11/2020
 
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,7 +167,8 @@ temp<-df %>%
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, Site_Name)
+  select(Timestamp, waterLevel, Site_Name) %>% 
+  add_column(Flag = 0, Notes = NA)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
@@ -211,7 +213,8 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+#!!! Needed to use offset version #2, becuase PT was hung loosely in well for this deployment.
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
@@ -369,7 +372,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level

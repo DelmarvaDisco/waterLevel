@@ -10,7 +10,7 @@
 #Issues with this download
 
 # NB-SW well casing broke. Needed to change the offset halfway through.
-# Extra filtering at a few sites (QB-UW2, JA-SW)
+# Extra filtering at a few sites (QB-UW2, JA-SW, DB-UW1)
 
 
 #Table of Contents~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -159,7 +159,8 @@ temp<-df %>%
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>%
-  select(Timestamp, waterLevel, Site_Name)
+  select(Timestamp, waterLevel, Site_Name) %>% 
+  add_column(Flag = 0, Notes = NA)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
@@ -169,6 +170,10 @@ temp_dy <- temp %>%
   mutate(waterLevel = waterLevel + 100)
 
 dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+
+#Additional filtering 
+temp <- temp %>% 
+  filter(Timestamp <= "2020-01-16 16:30:00" | Timestamp >= "2020-01-16 21:00:00")
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>% 
