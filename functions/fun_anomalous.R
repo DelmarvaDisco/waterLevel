@@ -30,7 +30,7 @@ fun_anomalous <- function(df, #timeseries data with anomalous values
   
   #Clean up the dataframe
   df <- df %>% 
-   select(waterLevel, Timestamp, Site_Name)
+   select(waterLevel, Timestamp, Site_Name, Flag, Notes)
   
   #return the df without anomalous values
   return(df)
