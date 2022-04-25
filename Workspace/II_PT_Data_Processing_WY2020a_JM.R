@@ -54,7 +54,7 @@ files<-list.files(paste0(data_dir, "20200508_Downloads\\export"), full.names =  
   pt_files<-pt_files[!str_detect(pt_files, "Baro")]
 
 #gather pt data
-df<-pt_files %>% map_dfr(download_fun)
+df <- pt_files %>% map_dfr(download_fun)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 2: Field Worksheet --------------------------------------------------------
@@ -64,7 +64,7 @@ field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\well_log.csv"))
 
 #create df of site name, sonde_id, and measured offset
 field_logs<-field_logs %>% 
-  select(Site_Name, Sonde_ID, Relative_water_level_m, Notes)
+  select(Site_Name, Sonde_ID, Relative_water_level_m, Well_head_m, Depth_to_water_m, Notes)
 
 #Check to make sure pt files match field logs
 #Commented out this step to speed up run time
@@ -277,7 +277,7 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-# temp_dy <- temp %>% 
+# temp_dy <- temp %>%
 #   mutate(waterLevel = waterLevel + 100)
 # 
 # dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
@@ -904,7 +904,7 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
 
 #plot in dygraphs
-# temp_dy <- temp %>% 
+# temp_dy <- temp %>%
 #   mutate(waterLevel = waterLevel + 100)
 # 
 # dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
@@ -1171,7 +1171,7 @@ temp <- temp %>%
   filter(Timestamp <= "2020-05-10 3:15:00")
 
 #plot in dygraphs
-# temp_dy <- temp %>% 
+# temp_dy <- temp %>%
 #   mutate(waterLevel = waterLevel + 100)
 # 
 # dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
@@ -1477,8 +1477,9 @@ temp <- df %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>% 
   select(Timestamp, waterLevel, Site_Name) %>% 
-#Flags and ntoes for this download
-  add_column(Flag = 1, Notes = "Well ripped up. PT just laying on wetland bottom.")
+#Flags and notes for this download
+  add_column(Flag = 1, 
+             Notes = "Well ripped up sometime in F2019. PT just laying on wetland bottom (Offset = 1 cm)")
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
@@ -1490,10 +1491,10 @@ temp <- temp %>%
   filter(Timestamp <= "2020-1-16 19:45:00" | Timestamp >= "2020-1-16 23:30:00")
   
 #plot in dygraphs
-# temp_dy <- temp %>% 
-#   mutate(waterLevel = waterLevel + 100)
-# 
-# dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+temp_dy <- temp %>%
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>% 
@@ -1771,5 +1772,6 @@ output <- unique(output) %>%
 
 #export 
 write_csv(output, paste0(data_dir,"output_20200508_JM.csv"))
+
 
 
