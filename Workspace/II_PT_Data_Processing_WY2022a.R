@@ -20,6 +20,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Step 1: Setup Workspace-------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #Clear workspace 
 remove(list=ls())
 
@@ -41,5 +42,38 @@ source("functions//fun_anomalous.R")
 
 #data directory
 data_dir <- "data//"
+
+#list pt, baro, and log file locations
+files<-list.files(paste0(data_dir, "20220410_Downloads//export"), full.names =  TRUE) 
+pt_files<-files[!str_detect(files, "log")]
+pt_files<-files[!str_detect(files, "Baro")]
+
+#gather pt data
+df<-files %>% map_dfr(download_fun) 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 2: Setup Workspace-------------------------------------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+field_logs <- read_csv(paste0(data_dir, "20220410_Downloads//well_log.csv"))
+
+#Get rid of scientific notation from field log
+field_logs <- field_logs %>% 
+  select(c(Relative_water_level_m, Date, Sonde_ID, Site_Name, 
+           Notes, Depth_to_water_m, Well_head_m)) %>% 
+  filter(!is.na(Site_Name)) %>% 
+  mutate(Relative_water_level_m = as.numeric(Relative_water_level_m))
+
+#Check to make sure pt files match field logs
+check_fun(pt_files, field_logs)
+
+rm(check_fun_errors)
+
+#Join field log to master df. First, make Sonde_ID a character
+df$Sonde_ID <- as.character(df$Sonde_ID)
+field_logs$Sonde_ID <- as.character(field_logs$Sonde_ID)
+
+#join to master df
+df<-df %>% left_join(., field_logs)
 
 
