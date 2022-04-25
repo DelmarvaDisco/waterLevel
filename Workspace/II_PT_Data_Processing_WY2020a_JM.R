@@ -52,7 +52,6 @@ data_dir<-"data\\"
 files<-list.files(paste0(data_dir, "20200508_Downloads\\export"), full.names =  TRUE) 
   pt_files<-files[!str_detect(files, "log")]
   pt_files<-pt_files[!str_detect(pt_files, "Baro")]
-field_logs<-paste0(data_dir, 'well_log.csv')
 
 #gather pt data
 df<-pt_files %>% map_dfr(download_fun)
