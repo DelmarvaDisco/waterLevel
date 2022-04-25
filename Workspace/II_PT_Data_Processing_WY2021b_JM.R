@@ -59,7 +59,7 @@ pt_files<-files[!str_detect(files, "baro")]
 df<-files %>% map_dfr(download_fun) 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 2: Setup Workspace-------------------------------------------------------
+# Step 2: Field sheet -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Download Field Worksheet
 field_logs <- read_csv(paste0(data_dir, "20211112_Downloads//well_log.csv"))
@@ -88,7 +88,7 @@ df <- df %>%
   mutate(Site_Name = if_else(is.na(Site_Name), "DB-SW", Site_Name))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 3: Determine offset for each well -------------------------------------------------------
+# Step 3: Read in the offset file -------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Some quick notes aobut our definition of offset
