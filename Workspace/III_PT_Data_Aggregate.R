@@ -126,10 +126,9 @@ df <- df %>%
 df <- df[!duplicated(df[ , c("Timestamp", "Site_Name")]), ]
 
 df_interest <- df %>% 
-  filter(Site_Name %in% c("Jones Road South Catchment Outlet", 
-                          "Jones Road North Catchment Outlet",
-                          "Tiger Paw Catchment Outlet")) %>% 
-  mutate(waterLevel = waterLevel + 100) 
+  filter(Site_Name %in% c("DB-SW")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  filter(waterLevel >= 97)
 
 df_interest <- df_interest %>% 
   pivot_wider(names_from = Site_Name,
