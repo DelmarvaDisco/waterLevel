@@ -537,7 +537,7 @@ temp <- df %>%
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, Site_Name)
+  select(Timestamp, waterLevel, Site_Name) 
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
