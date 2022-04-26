@@ -1642,7 +1642,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
@@ -1657,10 +1657,10 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-# temp2 <- dt %>% 
+# temp2 <- dt %>%
 #   filter(Site_Name == site)
 # 
-# temp_dy <- rbind(temp, temp2) %>% 
+# temp_dy <- rbind(temp, temp2) %>%
 #   mutate(waterLevel = waterLevel + 100)
 # 
 # dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
