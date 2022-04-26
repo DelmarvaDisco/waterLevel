@@ -58,6 +58,7 @@ df <- pt_files %>% map_dfr(download_fun)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Step 2: Field Worksheet--------------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #Download Field Worksheet
 field_logs <- read_csv(paste0(data_dir, "20201015_Downloads\\well_log.csv")) %>% 
 #Get rid of scientific notation from field log
@@ -661,7 +662,7 @@ temp <- df %>%
                        Flag),
          Notes = ifelse(Timestamp >= "2020-09-21 12:00:00", 
                         "Low battery noisy/inaccurate data", 
-                        Flag))
+                        Notes))
   
 
 #remove anomalous values. Needs a little extra filtering
@@ -1544,19 +1545,20 @@ temp <- df %>%
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, Site_Name)
+  select(Timestamp, waterLevel, Site_Name) %>% 
+  add_column(Flag = 0, Notes = NA)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp2 <- dt %>% 
-  filter(Site_Name == site)
-
-temp_dy <- rbind(temp, temp2) %>% 
-  mutate(waterLevel = waterLevel + 100)
-
-dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+# temp2 <- dt %>% 
+#   filter(Site_Name == site)
+# 
+# temp_dy <- rbind(temp, temp2) %>% 
+#   mutate(waterLevel = waterLevel + 100)
+# 
+# dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>%  
@@ -1596,19 +1598,20 @@ temp <- df %>%
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, Site_Name)
+  select(Timestamp, waterLevel, Site_Name) %>% 
+  add_column(Flag = 0, Notes = NA)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp2 <- dt %>% 
-  filter(Site_Name == site)
-
-temp_dy <- rbind(temp, temp2) %>% 
-  mutate(waterLevel = waterLevel + 100)
-
-dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+# temp2 <- dt %>% 
+#   filter(Site_Name == site)
+# 
+# temp_dy <- rbind(temp, temp2) %>% 
+#   mutate(waterLevel = waterLevel + 100)
+# 
+# dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>%  
@@ -1647,19 +1650,20 @@ temp <- df %>%
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, Site_Name)
+  select(Timestamp, waterLevel, Site_Name) %>% 
+  add_column(Flag = 0, Notes = NA)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp2 <- dt %>% 
-  filter(Site_Name == site)
-
-temp_dy <- rbind(temp, temp2) %>% 
-  mutate(waterLevel = waterLevel + 100)
-
-dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+# temp2 <- dt %>% 
+#   filter(Site_Name == site)
+# 
+# temp_dy <- rbind(temp, temp2) %>% 
+#   mutate(waterLevel = waterLevel + 100)
+# 
+# dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>%  
@@ -1698,19 +1702,20 @@ temp <- df %>%
   filter(Site_Name == site) %>%
   mutate(waterLevel = waterHeight + offset_temp) %>% 
   filter(!is.na(waterLevel)) %>% 
-  select(Timestamp, waterLevel, Site_Name)
+  select(Timestamp, waterLevel, Site_Name) %>% 
+  add_column(Flag = 0, Notes = NA)
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-temp2 <- dt %>% 
-  filter(Site_Name == site)
-
-temp_dy <- rbind(temp, temp2) %>% 
-  mutate(waterLevel = waterLevel + 100)
-
-dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+# temp2 <- dt %>% 
+#   filter(Site_Name == site)
+# 
+# temp_dy <- rbind(temp, temp2) %>% 
+#   mutate(waterLevel = waterLevel + 100)
+# 
+# dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>%  
@@ -1729,8 +1734,8 @@ output <- output %>% add_row(temp)
 rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 6.30 TS-SW -------------------------------------------------------------------
-site <- "TS-SW"
-
+# site <- "TS-SW"
+# 
 # #Find the offset !!! Need to figure out for temporary well!!!###
 # #offset_temp <- offset %>% filter(Site_Name == site) %>%  pull(offset)
 # 
@@ -1767,21 +1772,23 @@ site <- "TS-SW"
 # #Append to output file
 # output <- output %>% add_row(temp)
 # 
-rm(site, temp, temp_dy, check, offset_temp, temp2)
+# rm(site, temp, temp_dy, check, offset_temp, temp2)
 
 # 7.0 Aggregate and export ------------------------------------------------
 
-#Plot all the sites together. Maybe something looks weird
-all_sites <- ggplot(data = output, 
-                    mapping = aes(x = Timestamp,
-                                  y = waterLevel,
-                                  color = Site_Name)) +
-  geom_line() +
-  theme_bw()
-
-(all_sites)
-
-rm(all_sites)
+#Plot some sites together. Maybe something looks weird
+# select_sites <- output %>% filter(Site_Name %in% c("TB-UW1", "TB-UW2", "TB-UW3"))
+# 
+# select_sites_gg <- ggplot(data = select_sites, 
+#                           mapping = aes(x = Timestamp,
+#                                         y = waterLevel,
+#                                         color = Site_Name)) +
+#                    geom_line() +
+#                    theme_bw()
+# 
+# (select_sites_gg)
+# 
+# rm(select_sites, select_sites_gg)
 
 #Compare the PT measurements to the field log
 
