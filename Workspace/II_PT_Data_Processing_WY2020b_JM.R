@@ -658,7 +658,7 @@ temp <- df %>%
   add_column(Flag = 0, Notes = NA) %>% 
   #!!!Bad battery flag data late in deployment!!! 
   mutate(Flag = ifelse(Timestamp >= "2020-09-21 12:00:00", 
-                       "2", 
+                       2, 
                        Flag),
          Notes = ifelse(Timestamp >= "2020-09-21 12:00:00", 
                         "Low battery noisy/inaccurate data", 
