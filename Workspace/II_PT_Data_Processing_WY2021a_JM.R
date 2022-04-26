@@ -1738,19 +1738,19 @@ rm(site, temp, temp_dy, check, offset_temp, temp2)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Look at individual sites of interest
-all_sites <- output #%>% 
-  #filter()
-
-all_sites_plot <- ggplot(data = all_sites, 
-                    mapping = aes(x = Timestamp,
-                                  y = waterLevel,
-                                  color = Site_Name)) +
-  geom_line() +
-  theme_bw()
-
-(all_sites_plot)
-
-rm(all_sites, all_sites_plot)
+#Plot some sites together. Maybe something looks weird
+# select_sites <- output %>% filter(Site_Name %in% c("TB-UW1", "TB-UW2", "TB-UW3"))
+# 
+# select_sites_gg <- ggplot(data = select_sites, 
+#                           mapping = aes(x = Timestamp,
+#                                         y = waterLevel,
+#                                         color = Site_Name)) +
+#                    geom_line() +
+#                    theme_bw()
+# 
+# (select_sites_gg)
+# 
+# rm(select_sites, select_sites_gg)
 
 #Compare the PT measurements to the field log
 
