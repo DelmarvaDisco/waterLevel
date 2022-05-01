@@ -162,11 +162,12 @@ df<-df %>%
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 # Read previous downloads
-dx <- read_csv("data/output_20210525_JM.csv")
-dy <- read_csv("data/output_20211112_JM.csv")
+dx <- read_csv("data/output_20200508_JM.csv")
+dy <- read_csv("data/output_20201015_JM.csv")
+dz <- read_csv("data/output_20210525_JM.csv")
+da <- read_csv("data/output_20211112_JM.csv")
 
-
-dt <- bind_rows(dx, dy) %>% 
+dt <- bind_rows(dx, dy, dz, da) %>% 
   mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT")) 
 
 rm(dx, dy)
