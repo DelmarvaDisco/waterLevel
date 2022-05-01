@@ -68,16 +68,20 @@ download_checks <- function(file_path){
   #Read the files
   temp <- read_csv(paste0(file_path)) %>% 
     as_tibble() %>% 
+    mutate(Well_head_m = as.character(Well_head_m),
+           Depth_to_water_m = as.character(Depth_to_water_m)) %>% 
     mutate(file = str_sub(file_path)) 
   
   temp
 }
 
 #Find checks inside the file list
-checks <- files[str_detect(files, "checks_")] 
+checks <- files[str_detect(files, "checks_")]
+                     
 #Download the checks
 checks <- checks %>% 
   map_dfr(download_checks) 
+
 
 # 4.2 Download the J. Maze outputs ------------------------------------------------
 
@@ -86,53 +90,69 @@ JM_output <- files[str_detect(files, "output_")]
 df <- JM_output %>% 
   map_dfr(read_csv) %>%  
   mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT"))
-  
+
 
 # 4.3 Plot the checks --------------------------------------------------
 
-checks_interest <- checks %>% 
-  filter(Site_Name == "QB-UW1")
-  #Checks from latest download aren't reliable (baro missmatch)
-  #filter(!file == "data//checks_20211112_JM.csv")
+checks_interest <- checks #%>% 
+#filter(Site_Name == "QB-UW1")
+#Checks from latest download aren't reliable (baro missmatch)
+#filter(!file == "data//checks_20211112_JM.csv")
 
 checks_plot <- ggplot(data = checks_interest, 
-                      aes(x = Site_Name,
-                          y = measured_diff,
-                          fill = file)) +
+                           aes(x = Site_Name,
+                               y = measured_diff,
+                               fill = file)) +
   geom_col(position = position_dodge(width = 0.75,
                                      preserve = "single"),
            color = "black",
            width = 0.75) + 
   theme_bw() +
-  theme(axis.text = element_text(size = 8,
-                                 face = "bold",
-                                 angle = 90),
+  theme(axis.text = element_blank(),
         axis.title.x = element_blank()) +
-  ylab("Measured diff meters (sensor - field)")
-  
+  ylab("OG (sensor - field)")
 
 (checks_plot)
+
+library(cowplot)
+
+both_plot <- plot_grid(checks_plot, checks_plot_test,
+                       ncol = 1, axis = "b")
+(both_plot)
+
+rm(checks_plot_test, checks_plot, both_plot, 
+   checks, checks_interest, checks_test, checks_interest_test)
+
 
 # Dygraph of certain sites ------------------------------------------------
 
 df <- df %>% 
   as_tibble() %>% 
-  mutate(waterLevel = round(waterLevel, digits = 4))
-
-df <- df %>% 
-  unique()
+  mutate(waterLevel = round(waterLevel, digits = 4)) %>% 
+  mutate(Date = str_sub(as.character(Timestamp), start = 1, end = 10)) %>% 
+  group_by(Date, Site_Name) %>% 
+  summarise(dly_mean_wtrlvl = mean(waterLevel))
 
 #Some overlapping data points need to be removed
-df <- df[!duplicated(df[ , c("Timestamp", "Site_Name")]), ]
+df <- df %>% 
+  distinct(Date, Site_Name, .keep_all =  TRUE) %>% 
+  mutate("Date" = ymd(Date)) %>% 
+  add_column(version = "df")
+
+# Find the differing values between data frames and plot them -------------
 
 df_interest <- df %>% 
-  filter(Site_Name %in% c("DB-SW")) %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
-  filter(waterLevel >= 97)
+  filter(Site_Name %in% c("TB-SW", "DB-UW1")) %>% 
+  mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
+  filter(waterLevel >= 97) %>% 
+  rename(Timestamp = Date) %>% 
+  select(-dly_mean_wtrlvl)
 
-df_interest <- df_interest %>% 
-  pivot_wider(names_from = Site_Name,
-              values_from = waterLevel)
+df_interest <- pivot_wider(data = df_interest,
+                           names_from = c("version", "Site_Name"),
+                           values_from = "waterLevel")
+
+
 
 dygraph_ts_fun(df_interest)
 

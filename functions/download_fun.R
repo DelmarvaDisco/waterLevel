@@ -23,10 +23,11 @@ download_fun<-function(file_path){
                     regexpr('GMT', time_zone)[1],
                     nchar(time_zone))
   time_zone<-if_else(time_zone=="GMT-04:00",
-                     "EST",
+                     "America/New_York",
                      if_else(time_zone=="GMT-05:00",
-                             "EDT",
+                             "America/Chicago",
                              "-9999"))
+
   #Determin units
   units<-colnames(temp)[grep("Abs Pres,",colnames(temp))]
   units<-substr(units,
@@ -43,7 +44,7 @@ download_fun<-function(file_path){
       #Select collumns of interest
       dplyr::select(Timestamp, pressureAbsolute, temp) %>%
       #Convert to POSIX
-      dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%Y %H:%M"), tz = time_zone))  %>%
+      dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%Y %H:%M", tz = time_zone)))  %>%
       #Convert to GMT
       dplyr::mutate(Timestamp = with_tz(Timestamp, "GMT")) %>%
       #Order the intput
@@ -55,7 +56,7 @@ download_fun<-function(file_path){
       #Select collumns of interest
       dplyr::select(Timestamp, pressureAbsolute, temp) %>%
       #Convert to POSIX
-      dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, "%m/%d/%y %I:%M:%S %p"), tz = time_zone))  %>%
+      dplyr::mutate(Timestamp = as.POSIXct(strptime(Timestamp, format = "%m/%d/%y %I:%M:%S %p", tz = time_zone)))  %>%
       #Convert to GMT
       dplyr::mutate(Timestamp = with_tz(Timestamp, "GMT")) %>%
       #Order the intput
@@ -71,6 +72,9 @@ download_fun<-function(file_path){
   
   #Add serial number
   temp$Sonde_ID<-serial_number
+  
+  #Add a time_zone column
+  temp$time_zone <- time_zone
   
   #Add download data
   temp$download_date<-as_date(max(temp$Timestamp))

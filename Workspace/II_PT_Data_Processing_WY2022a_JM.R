@@ -118,10 +118,13 @@ baro_files <- paste0(data_dir, "all_baros\\", list.files(path = paste0(data_dir,
 baro<-lapply(baro_files, download_fun) %>% bind_rows()
 
 #Assign Baro logger to each row
-baro<-baro %>% mutate(baro_logger = ifelse(Sonde_ID==10589038, "QB Baro", "GR Baro")) %>% 
-  filter(!is.na(pressureAbsolute))
+baro<-baro %>% mutate(baro_logger = ifelse(Sonde_ID==10589038, "QB Baro", "GR Baro"))
 
-baro <- unique(baro)
+#Clean up baro files
+baro <- baro %>%
+  filter(!is.na(pressureAbsolute)) %>%  
+  distinct(Timestamp, baro_logger, .keep_all = TRUE) %>% 
+  select(-download_date)
 
 #Create interpolation functions 
 qb_baro<-baro %>% filter(baro_logger == "QB Baro")
@@ -156,10 +159,6 @@ df<-df %>%
 # Step 6: Calculate waterLevel using the offset & QAQC -------------------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 6: Calculate waterLevel using the offset & QAQC -------------------------------------------------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 # Make table to compare sensors to physically measured values 
 
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
@@ -170,8 +169,7 @@ dy <- read_csv("data/output_20211112_JM.csv")
 
 
 dt <- bind_rows(dx, dy) %>% 
-  mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT")) %>% 
-  add_column(Flag = 0, Notes = NA)
+  mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT")) 
 
 rm(dx, dy)
 
@@ -931,7 +929,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
@@ -1408,7 +1406,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
@@ -1673,7 +1671,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level

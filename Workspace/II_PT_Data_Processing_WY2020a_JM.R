@@ -100,6 +100,12 @@ baro<-lapply(baro_files, download_fun) %>% bind_rows()
 #Assign Baro logger to each row
 baro<-baro %>% mutate(baro_logger = ifelse(Sonde_ID==10589038, "QB Baro", "GR Baro"))
 
+#Clean up baro files
+baro <- baro %>%
+  filter(!is.na(pressureAbsolute)) %>%  
+  distinct(Timestamp, baro_logger, .keep_all = TRUE) %>% 
+  select(-download_date)
+
 #Create interpolation functions 
 qb_baro<-baro %>% filter(baro_logger == "QB Baro")
 qb_baro_fun<-approxfun(qb_baro$Timestamp, qb_baro$pressureAbsolute)
