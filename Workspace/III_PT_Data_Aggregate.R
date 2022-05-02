@@ -114,16 +114,6 @@ checks_plot <- ggplot(data = checks_interest,
 
 (checks_plot)
 
-library(cowplot)
-
-both_plot <- plot_grid(checks_plot, checks_plot_test,
-                       ncol = 1, axis = "b")
-(both_plot)
-
-rm(checks_plot_test, checks_plot, both_plot, 
-   checks, checks_interest, checks_test, checks_interest_test)
-
-
 # Dygraph of certain sites ------------------------------------------------
 
 df <- df %>% 

@@ -14,6 +14,7 @@
 #  - TB-SW, new logger swapped. Need new offset after Dec 2021
 #  - Noisy data at DB-SW, ND-UW1,TB-UW1, TB-UW2, TB-UW3 from 11/11/2021 till early Jan
 #  - Still need to download TI-SW data. 
+#  - XB-UW1 is dry much of the time.
 
 
 
@@ -1532,6 +1533,10 @@ temp<-df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+temp <- temp %>% 
+  filter(Timestamp <= "2021-12-01 9:00:00" | Timestamp >= "2021-12-01 16:00:00") %>% 
+  filter(Timestamp <= "2021-12-09 10:00:00" | Timestamp >= "2021-12-09 16:00:00")
+
 #plot in dygraphs
 temp2 <- dt %>% 
   filter(Site_Name == site)
@@ -1898,8 +1903,12 @@ temp <- df %>%
   select(Timestamp, waterLevel, Site_Name) %>%
   add_column(Flag = 0, Notes = NA)
 
+#More filtering
+temp <- temp %>% 
+  filter(Timestamp <= "2021-12-13 14:30:00" | Timestamp >= "2021-12-13 20:30:00")
+
 #remove anomalous values
-temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+temp <- fun_anomalous(temp, min = -0.03, max = 0.2)
 
 #plot in dygraphs
 temp2 <- dt %>% 
@@ -1953,6 +1962,9 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+temp <- temp %>%
+  filter(Timestamp <= "2021-12-13 19:00:00" | Timestamp >= "2021-12-13 23:45:00")
+
 #plot in dygraphs
 temp2 <- dt %>% 
   filter(Site_Name == site)
@@ -2004,6 +2016,10 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#More filtering
+temp <- temp %>%
+  filter(Timestamp <= "2021-12-13 19:00:00" | Timestamp >= "2021-12-13 23:45:00")
 
 #plot in dygraphs
 temp2 <- dt %>% 
@@ -2109,6 +2125,10 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#More filtering 
+temp <- temp %>%
+  filter(Timestamp <= "2021-12-14 15:00:00" | Timestamp >= "2021-12-15 5:45:00")
+
 #plot in dygraphs
 temp2 <- dt %>% 
   filter(Site_Name == site)
@@ -2213,6 +2233,9 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+temp <- temp %>%
+  filter(Timestamp <= "2021-12-15 17:00:00" | Timestamp >= "2021-12-15 20:45:00")
+
 #plot in dygraphs
 temp2 <- dt %>% 
   filter(Site_Name == site)
@@ -2264,6 +2287,11 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#Additional filtering
+temp <- temp %>%
+  filter(Timestamp <= "2021-10-18 11:00:00" | Timestamp >= "2021-10-18 23:45:00") %>% 
+  filter(Timestamp <= "2021-12-15 16:00:00" | Timestamp >= "2021-12-16 4:45:00")
 
 #plot in dygraphs
 temp2 <- dt %>% 
@@ -2369,6 +2397,11 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#More filtering 
+temp <- temp %>% 
+  filter(Timestamp <= "2022-02-23 16:00:00" | Timestamp >= "2022-02-23 20:00:00") %>% 
+  filter(Timestamp <= "2022-04-01 16:00:00" | Timestamp >= "2022-02-23 20:00:00")
+
 #plot in dygraphs
 temp2 <- dt %>% 
   filter(Site_Name == site)
@@ -2420,6 +2453,9 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+temp <- temp %>% 
+  filter(Timestamp <= "2021-12-15 14:00:00" | Timestamp >= "2021-12-15 20:00:00")
 
 #plot in dygraphs
 temp2 <- dt %>% 
@@ -2525,6 +2561,10 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#More filtering 
+temp <- temp %>% 
+  filter(Timestamp <= "2021-12-15 19:00:00" | Timestamp >= "2021-12-15 22:00:00")
+
 #plot in dygraphs
 temp2 <- dt %>% 
   filter(Site_Name == site)
@@ -2550,7 +2590,7 @@ output <- output %>% add_row(temp)
 
 rm(site, temp, temp_dy, check, offset_temp, temp2)
 
-# 6.45 MB-SW --------------------------------------------------------------
+# 6.45 MB-CH --------------------------------------------------------------
 
 site <- "MB-CH"
 
@@ -2576,6 +2616,10 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#More filtering 
+temp <- temp %>% 
+  filter(Timestamp <= "2021-12-15 18:00:00" | Timestamp >= "2021-12-15 23:00:00")
 
 #plot in dygraphs
 temp2 <- dt %>% 
@@ -2680,6 +2724,10 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#More filtering
+temp <- temp %>% 
+  filter(Timestamp <= "2021-12-16 13:00:00" | Timestamp >= "2021-12-16 20:00:00")
 
 #plot in dygraphs
 temp2 <- dt %>% 

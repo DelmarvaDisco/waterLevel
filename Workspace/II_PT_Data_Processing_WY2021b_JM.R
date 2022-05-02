@@ -1895,6 +1895,13 @@ temp <- df %>%
   select(Timestamp, waterLevel, Site_Name) %>%
   add_column(Flag = 0, Notes = NA)
 
+# More filtering
+temp <- temp %>% 
+  filter(Timestamp <= "2021-05-08 12:45:00" | Timestamp >= "2021-05-08 16:45:00") %>% 
+  filter(Timestamp <= "2021-05-20 12:45:00" | Timestamp >= "2021-05-20 21:45:00") %>% 
+  filter(Timestamp <= "2021-05-21 12:45:00" | Timestamp >= "2021-05-21 22:45:00") %>% 
+  filter(Timestamp <= "2021-06-17 9:00:00" | Timestamp >= "2021-06-17 17:00:00")
+
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
@@ -1950,6 +1957,10 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#More filtering
+temp <- temp %>%
+  filter(Timestamp <= "2021-04-14 9:00:00" | Timestamp >= "2021-04-14 12:00:00")
+
 #plot in dygraphs
 # temp2 <- dt %>% 
 #   filter(Site_Name == site)
@@ -2001,6 +2012,9 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+temp <- temp %>%
+  filter(Timestamp <= "2021-05-20 15:00:00" | Timestamp >= "2021-05-20 18:00:00")
 
 #plot in dygraphs
 # temp2 <- dt %>% 
@@ -2105,6 +2119,10 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
+#More filtering
+temp <- temp %>%
+  filter(Timestamp <= "2021-06-17 12:00:00" | Timestamp >= "2021-06-17 23:45:00")
 
 #plot in dygraphs
 # temp2 <- dt %>% 
@@ -2574,6 +2592,9 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+temp <- temp %>% 
+  filter(Timestamp <= "2021-10-18 11:00:00" | Timestamp >= "2021-10-18 15:00:00")
+
 #plot in dygraphs
 # temp2 <- dt %>% 
 #   filter(Site_Name == site)
@@ -2678,6 +2699,10 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#More filtering
+temp <- temp %>% 
+  filter(Timestamp <= "2021-10-18 13:00:00" | Timestamp >= "2021-10-18 20:00:00")
+
 #plot in dygraphs
 # temp2 <- dt %>% 
 #   filter(Site_Name == site)
@@ -2729,6 +2754,7 @@ temp <- df %>%
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
+
 
 #plot in dygraphs
 # temp2 <- dt %>% 
