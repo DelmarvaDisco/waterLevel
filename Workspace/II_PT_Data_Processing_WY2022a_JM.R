@@ -12,6 +12,7 @@
 #    in Step #2
 #  - QB-SW has a huge drop after Fall 2021 download.
 #  - TB-SW, new logger swapped. Need new offset after Dec 2021
+#  - Noisy data at DB-SW, ND-UW1,TB-UW1, TB-UW2, TB-UW3 from 11/11/2021 till early Jan
 #  - Still need to download TI-SW data. 
 
 
@@ -522,6 +523,10 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#Extra filtering 
+temp <- temp %>% 
+  filter(Timestamp <= "2022-04-01 17:00:00" | Timestamp >= "2022-04-02 12:00:00")
+
 #plot in dygraphs
 temp2 <- dt %>% 
   filter(Site_Name == site)
@@ -562,7 +567,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
