@@ -94,8 +94,8 @@ df <- JM_output %>%
 
 # 4.3 Plot the checks --------------------------------------------------
 
-checks_interest <- checks #%>% 
-#filter(Site_Name == "QB-UW1")
+checks_interest <- checks #%>%
+  # filter(Site_Name %in% c("TS-SW", "BD-SW", "TS-CH", "BD-CH"))
 #Checks from latest download aren't reliable (baro missmatch)
 #filter(!file == "data//checks_20211112_JM.csv")
 
@@ -108,9 +108,11 @@ checks_plot <- ggplot(data = checks_interest,
            color = "black",
            width = 0.75) + 
   theme_bw() +
-  theme(axis.text = element_blank(),
-        axis.title.x = element_blank()) +
-  ylab("OG (sensor - field)")
+  theme(axis.text = element_text(size = 8,
+                                 face = "bold",
+                                 angle = 90),
+        axis.title.x = element_text()) +
+  ylab("(sensor - field)")
 
 (checks_plot)
 
@@ -126,23 +128,21 @@ df <- df %>%
 #Some overlapping data points need to be removed
 df <- df %>% 
   distinct(Date, Site_Name, .keep_all =  TRUE) %>% 
-  mutate("Date" = ymd(Date)) %>% 
-  add_column(version = "df")
+  mutate("Date" = ymd(Date))
 
 # Find the differing values between data frames and plot them -------------
 
 df_interest <- df %>% 
-  filter(Site_Name %in% c("TB-SW", "DB-UW1")) %>% 
+  filter(Site_Name %in% c("BD-CH", "BD-SW", "TS-CH", 
+                          "DK-CH", "TS-SW", "DK-SW", "ND-SW")) %>% 
   mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
   filter(waterLevel >= 97) %>% 
   rename(Timestamp = Date) %>% 
   select(-dly_mean_wtrlvl)
 
 df_interest <- pivot_wider(data = df_interest,
-                           names_from = c("version", "Site_Name"),
+                           names_from = c("Site_Name"),
                            values_from = "waterLevel")
-
-
 
 dygraph_ts_fun(df_interest)
 
