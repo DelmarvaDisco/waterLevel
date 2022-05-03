@@ -15,8 +15,6 @@
 #  - Noisy data at DB-SW, ND-UW1,TB-UW1, TB-UW2, TB-UW3 from 11/11/2021 till early Jan
 #  - Still need to download TI-SW data. 
 #  - XB-UW1 is dry much of the time.
-#  - !!!! change offset for TS-CH and BD-CH files!!!
-
 
 
 #Steps
