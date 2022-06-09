@@ -15,6 +15,7 @@
 #  - Noisy data at DB-SW, ND-UW1,TB-UW1, TB-UW2, TB-UW3 from 11/11/2021 till early Jan
 #  - Still need to download TI-SW data. 
 #  - XB-UW1 is dry much of the time.
+#  - Strange behavior at ND-SW, drop on 2/3/2022
 
 
 #Steps
@@ -163,15 +164,15 @@ df<-df %>%
 checks <- tibble(Site_Name = c("na"), sensor_wtrlvl = c("na"))
 
 # Read previous downloads
-dx <- read_csv("data/output_20200508_JM.csv")
-dy <- read_csv("data/output_20201015_JM.csv")
+# dx <- read_csv("data/output_20200508_JM.csv")
+# dy <- read_csv("data/output_20201015_JM.csv")
 dz <- read_csv("data/output_20210525_JM.csv")
 da <- read_csv("data/output_20211112_JM.csv")
 
-dt <- bind_rows(dx, dy, dz, da) %>% 
+dt <- bind_rows(dz, da) %>% 
   mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT")) 
 
-rm(dx, dy)
+rm(dx, dy, dz, da)
 
 # 6.0 DB-UW1 ------------------------------------------------------------------
 site <- "DB-UW1"
@@ -777,8 +778,6 @@ offset_temp <- offset %>%
 offset_temp <- offset_temp %>% 
   filter(Version_num == "Two") %>% 
   pull(offset) 
-
-offset_temp <- 0
 
 #Estimate water level
 temp <- df %>% 

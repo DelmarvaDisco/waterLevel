@@ -782,7 +782,10 @@ temp<-df %>%
                        Flag),
          Notes = ifelse(Timestamp >= "2021-09-21 12:00:00", 
                         "Low battery noisy/inaccurate data", 
-                        Notes))
+                        Notes),
+         waterLevel = ifelse(Timestamp >= "2021-09-25 12:00:00",
+                             "NA",
+                             waterLevel))
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)

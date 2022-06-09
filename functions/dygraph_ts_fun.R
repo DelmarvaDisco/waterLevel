@@ -11,8 +11,8 @@ dygraph_ts_fun<-function(df){
     dyLegend() %>%
     dyOptions(strokeWidth = 1.5) %>%
     dyOptions(labelsUTC = TRUE) %>%
-    dyHighlight(highlightCircleSize = 5,
-                highlightSeriesBackgroundAlpha = 0.2,
-                hideOnMouseOut = FALSE) %>%
+    #dyHighlight(highlightCircleSize = 5,
+                #highlightSeriesBackgroundAlpha = 0.2,
+                #hideOnMouseOut = FALSE) %>%
     dyAxis("y", label = "Variable")
 }
