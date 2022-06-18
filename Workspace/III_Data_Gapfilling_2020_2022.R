@@ -105,17 +105,70 @@ Sites <- unique(df$Site_Name) %>%
 
 #DK_SW
 
+# DK_SW <- df %>%
+#   filter(Site_Name == "DK-SW") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(DK_SW)
+# rm(DK_SW)
+
 #DK-UW1
+
+# DK_UW1 <- df %>%
+#   filter(Site_Name == "DK-UW1") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(DK_UW1)
+# rm(DK_UW1)
 
 #DK-UW2
 
+# DK_UW2 <- df %>%
+#   filter(Site_Name == "DK-UW2") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(DK_UW2)
+# rm(DK_UW2)
+
 #FN-SW
 
+# FN_SW <- df %>%
+#   filter(Site_Name == "FN-SW") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(FN_SW)
+# rm(FN_SW)
+
 #HB-CH
+HB_CH <- df %>%
+  filter(Site_Name == "HB-CH") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(HB_CH)
+rm(HB_CH)
 
 #HB-SW
+HB_SW <- df %>%
+  filter(Site_Name == "HB-SW") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(HB_SW)
+rm(HB_SW)
 
 #HB-UW1
+HB_UW1 <- df %>%
+  filter(Site_Name == "HB-UW1") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(HB_UW1)
+rm(HB_UW1)
 
 #JA-SW
 
@@ -132,48 +185,118 @@ Sites <- unique(df$Site_Name) %>%
 #Jones Road North Catchment Outlet
 
 #Jones Road South Catchment Outlet
+Jones_Rd_S <- df %>%
+  filter(Site_Name == "Jones Road South Catchment Outlet") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(Jones_Rd_S)
+rm(Jones_Rd_S)
 
 #MB-CH
+MB_CH <- df %>%
+  filter(Site_Name == "MB-CH") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(MB_CH)
+rm(MB_CH)
 
 #MB-SW
+MB_SW <- df %>%
+  filter(Site_Name == "MB-SW") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(MB_SW)
+rm(MB_SW)
 
 #MB-UW1
+MB_UW1 <- df %>%
+  filter(Site_Name == "MB-UW1") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(MB_UW1)
+rm(MB_UW1)
 
 #ND-SW
 
 #ND-UW1
 
-ND_UW1 <- df %>% 
-  filter(Site_Name == "ND-UW1") %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
-  select(Timestamp, waterLevel)
-
-dygraph_ts_fun(ND_UW1) 
-rm(ND_UW1)
+# ND_UW1 <- df %>% 
+#   filter(Site_Name == "ND-UW1") %>% 
+#   mutate(waterLevel = waterLevel + 100) %>% 
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(ND_UW1) 
+# rm(ND_UW1)
 
 #ND-UW2
 
-ND_UW2 <- df %>% 
-  filter(Site_Name == "ND-UW2") %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
-  select(Timestamp, waterLevel)
-
-dygraph_ts_fun(ND_UW2) 
-rm(ND_UW2)
+# ND_UW2 <- df %>% 
+#   filter(Site_Name == "ND-UW2") %>% 
+#   mutate(waterLevel = waterLevel + 100) %>% 
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(ND_UW2) 
+# rm(ND_UW2)
 
 #ND-UW3
 
 #OB-CH
+OB_CH <- df %>%
+  filter(Site_Name == "OB-CH") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(OB_CH)
+rm(OB_CH)
 
 #OB-SW
+OB_SW <- df %>%
+  filter(Site_Name == "OB_SW") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(OB_SW)
+rm(OB_SW)
 
 #OB-UW1
+OB_UW1 <- df %>%
+  filter(Site_Name == "OB-UW1") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(OB_UW1)
+rm(OB_UW1)
 
 #QB-SW
+QB_SW <- df %>%
+  filter(Site_Name == "QB-SW") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(QB_SW)
+rm(QB_SW)
 
 #QB-UW1
+QB_UW1 <- df %>%
+  filter(Site_Name == "QB-UW1") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(QB_UW1)
+rm(QB_UW1)
 
 #QB-UW2
+QB_UW2 <- df %>%
+  filter(Site_Name == "QB-UW2") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(QB_UW2)
+rm(QB_UW2)
 
 #TA-SW
 
@@ -187,19 +310,33 @@ rm(ND_UW2)
 
 #TI-SW
 
+TI_SW <- df %>%
+  filter(Site_Name == "TI-SW") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(Timestamp, waterLevel)
+
+dygraph_ts_fun(TI_SW)
+rm(TI_SW)
+
 #Tiger Paw Catchment Outlet
 
 #TP-CH
-
-#TS-CH
-
-TS_CH <- df %>% 
-  filter(Site_Name == "TS-CH") %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
+TP_CH <- df %>%
+  filter(Site_Name == "TP-CH") %>%
+  mutate(waterLevel = waterLevel + 100) %>%
   select(Timestamp, waterLevel)
 
-dygraph_ts_fun(TS_CH) 
-rm(TS_CH)
+dygraph_ts_fun(TP_CH)
+rm(TP_CH)
+
+#TS-CH
+# TS_CH <- df %>% 
+#   filter(Site_Name == "TS-CH") %>% 
+#   mutate(waterLevel = waterLevel + 100) %>% 
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(TS_CH) 
+# rm(TS_CH)
 
 #TS-SW
 
@@ -290,10 +427,10 @@ temp <- df %>%
 
 #Plot correlation
 #!! Filtering the lowest water points where PT dries improves the model. 
-(ggplot(data = temp %>% filter(fill > -0.87),
-        mapping = aes(x = `gap`,
-                      y = `fill`)) +
-  geom_point())
+# (ggplot(data = temp %>% filter(fill > -0.87),
+#         mapping = aes(x = `gap`,
+#                       y = `fill`)) +
+#   geom_point())
 
 #Make a model (linear)
 #!! Filtering the lowest water points where PT dries improves the model. 
@@ -338,7 +475,13 @@ df <- bind_rows(temp, df)  %>%
 #Clean up the environment
 rm(model, temp, test_plot)
 
-# 4.3 ---------------------------------------------------------------------
+# 4.3 HB-CH Fall 2021 ---------------------------------------------------------------------
+
+
+# 4.4 HB-SW Fall 2021 -----------------------------------------------------
+
+
+# 4.5 HB-UW1 Fall 2021 ----------------------------------------------------
 
 
 
