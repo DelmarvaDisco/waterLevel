@@ -6,7 +6,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Notes:
-#
+# Is it worth while to incorperate multiple sites into correlary models?
 
 # 1. Libraries and workspace ----------------------------------------------
 
@@ -30,7 +30,7 @@ output_files <- list.files(path = paste0(data_dir), full.names = TRUE)
 
 output_files <- output_files[str_detect(output_files, pattern = "output_20")]
 
-outputs <- output_files %>% 
+df <- output_files %>% 
   map_dfr(read_csv) %>% 
   as_tibble() %>% 
   #Make the coluns formating work
@@ -40,42 +40,68 @@ outputs <- output_files %>%
          Flag = as.character(Flag), 
          Notes = as.character(Notes))
 
-
 # 3. Identify time points with data gaps -----------------------------------
 
 #List of sites to check for data gaps
-Sites <- unique(outputs$Site_Name) %>%
+Sites <- unique(df$Site_Name) %>%
   as_tibble() 
 
 #BD_CH
-BD_CH <- outputs %>% 
-  filter(Site_Name == "BD-CH") %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
-  select(Timestamp, waterLevel)
-
-dygraph_ts_fun(BD_CH) 
-rm(BD_CH)
-
-
-# More sites --------------------------------------------------------------
+# BD_CH <- df %>%
+#   filter(Site_Name == "BD-CH") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(BD_CH)
+# rm(BD_CH)
 
 #BD_SW
+# BD_SW <- df %>%
+#   filter(Site_Name == "BD-SW") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(BD_SW)
+# rm(BD_SW)
 
 #DB_SW
+# DB_SW <- df %>%
+#   filter(Site_Name == "DB-SW") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(DB_SW)
+# rm(DB_SW)
 
 #DB_UW1
 
+# DB_UW1 <- df %>%
+#   filter(Site_Name == "DB-UW1") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(DB_UW1)
+# rm(DB_UW1)
+
 #DF_SW
+# 
+# DF_SW <- df %>%
+#   filter(Site_Name == "DF-SW") %>%
+#   mutate(waterLevel = waterLevel + 100) %>%
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(DF_SW)
+# rm(DF_SW)
 
 #DK_CH
 
-DK_CH <- outputs %>% 
-  filter(Site_Name == "DK-CH") %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
-  select(Timestamp, waterLevel)
-
-dygraph_ts_fun(BD_CH) 
-rm(BD_CH)
+# DK_CH <- df %>% 
+#   filter(Site_Name == "DK-CH") %>% 
+#   mutate(waterLevel = waterLevel + 100) %>% 
+#   select(Timestamp, waterLevel)
+# 
+# dygraph_ts_fun(DK_CH) 
+# rm(DK_CH)
 
 #DK_SW
 
@@ -117,7 +143,7 @@ rm(BD_CH)
 
 #ND-UW1
 
-ND_UW1 <- outputs %>% 
+ND_UW1 <- df %>% 
   filter(Site_Name == "ND-UW1") %>% 
   mutate(waterLevel = waterLevel + 100) %>% 
   select(Timestamp, waterLevel)
@@ -127,7 +153,7 @@ rm(ND_UW1)
 
 #ND-UW2
 
-ND_UW2 <- outputs %>% 
+ND_UW2 <- df %>% 
   filter(Site_Name == "ND-UW2") %>% 
   mutate(waterLevel = waterLevel + 100) %>% 
   select(Timestamp, waterLevel)
@@ -167,7 +193,7 @@ rm(ND_UW2)
 
 #TS-CH
 
-TS_CH <- outputs %>% 
+TS_CH <- df %>% 
   filter(Site_Name == "TS-CH") %>% 
   mutate(waterLevel = waterLevel + 100) %>% 
   select(Timestamp, waterLevel)
@@ -186,53 +212,137 @@ rm(TS_CH)
 #XB-UW1
 
 
-
-
 # 4. Fill gaps with correlations -----------------------------------------
 
 #List of gaps to fix
-# 1) BD-CH Fall 2021 
-#   - used ND-UW1 as a corr r^2 = .975
-# 2) BD-SW 
+# 1) BD-CH Fall 2021 Oct 14th - Nov 3rd.
+#   - used BD-SW as a correlate r^2 = .985
+# 2) DK-CH Fall 2021 Oct 14th - Nov 3rd. 
+#   - used DK-UW2 as correlate r^2 = .978
 
 # 4.1 BD-CH Fall 2021 -----------------------------------------------------
 
-temp <- outputs %>% 
-  filter(Site_Name %in% c("BD-CH", "ND-UW1")) %>% 
+temp <- df %>% 
+  filter(Site_Name %in% c("BD-CH", "BD-SW")) %>% 
   #BD_CH not installed until 03-02
   filter(Timestamp >= "2021-03-02 2:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
-  rename("corr" = `BD-CH`,
-         "fill" = `ND-UW1`)
+  rename("gap" = `BD-CH`,
+         "fill" = `BD-SW`)
 
 #Plot correlation
-(ggplot(data = temp,
-        mapping = aes(x = `corr`,
-                      y = `fill`)) +
-  geom_point())
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill`)) +
+#   geom_point())
 
 #Make a model (linear)
-model <- lm(`corr` ~ `fill`, data = temp)
+model <- lm(`gap` ~ `fill`, data = temp)
 summary(model)
 
 #Apply model to df
 temp <- temp %>% 
-  mutate(predict = predict(model, data.frame(fill = fill)))
+  mutate(prediction = predict(model, data.frame(fill = fill)))
 
-#Compare modeled to data 
-test <- ggplot(data = temp,
-               mapping = aes(x = Timestamp,
-                             y = corr)) +
-        geom_line() +
-        geom_point(aes(y = predict),
-                   size = 0.1,
-                   color = "tomato") 
-  
-(test)
+#Compare modeled prediction to data 
+# test_plot <- ggplot(data = temp %>%
+#                            filter(Timestamp >= "2021-09-25 12:00:00" &
+#                                   Timestamp <= "2021-12-31 12:00:00"),
+#                     mapping = aes(x = Timestamp,
+#                                   y = gap)) +
+#              geom_line() +
+#              geom_point(aes(y = prediction),
+#                         size = 0.1,
+#                         color = "tomato")
+# 
+# (test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Gap filled with BD-SW as correllary r^2 = .978",
+                         Notes),
+         Site_Name = "BD-CH") %>% 
+  select(-c(gap, fill, prediction)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up environment
+rm(model, temp, test_plot)
+
+# 4.2 DK-CH Fall 2021 ---------------------------------------------------------------------
+
+temp <- df %>% 
+  filter(Site_Name %in% c("DK-CH", "DK-UW2")) %>% 
+  #DK_CH not installed until 03-02, but DK-UW2 installed way longer
+  filter(Timestamp >= "2021-03-02 2:00:00") %>% 
+  pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+  rename("gap" = `DK-CH`,
+         "fill" = `DK-UW2`)
+
+#Plot correlation
+#!! Filtering the lowest water points where PT dries improves the model. 
+(ggplot(data = temp %>% filter(fill > -0.87),
+        mapping = aes(x = `gap`,
+                      y = `fill`)) +
+  geom_point())
+
+#Make a model (linear)
+#!! Filtering the lowest water points where PT dries improves the model. 
+model <- lm(`gap` ~ `fill`, data = temp %>% filter(fill > -0.87))
+summary(model)
+
+#Apply model to df
+temp <- temp %>% 
+  mutate(prediction = predict(model, data.frame(fill = fill)))
+
+#Compare modeled prediction to data 
+# test_plot <- ggplot(data = temp %>%
+#                            filter(Timestamp >= "2021-08-25 12:00:00" &
+#                                   Timestamp <= "2022-01-31 12:00:00"),
+#                     mapping = aes(x = Timestamp,
+#                                   y = gap)) +
+#              geom_line() +
+#              geom_point(aes(y = prediction),
+#                         size = 0.1,
+#                         color = "tomato")
+# 
+# (test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Gap filled with DK-UW2 as correllary r^2 = .985",
+                         Notes),
+         Site_Name = "DK-CH") %>% 
+  select(-c(gap, fill, prediction)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up the environment
+rm(model, temp, test_plot)
+
+# 4.3 ---------------------------------------------------------------------
 
 
-# BD-SW -------------------------------------------------------------------
 
+# XX. Export gap-filled data ----------------------------------------------
 
 
 
