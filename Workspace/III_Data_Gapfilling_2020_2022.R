@@ -45,14 +45,14 @@ df <- output_files %>%
 Sites <- unique(df$Site_Name) %>%
   as_tibble() 
 
-#Sandbox
-DK_CH <- df %>%
-  filter(Site_Name == "DK-CH") %>%
+#Sandbox to look at timeseries
+BD_CH <- df %>%
+  filter(Site_Name == "BD-CH") %>%
   mutate(waterLevel = waterLevel + 100) %>%
   select(Timestamp, waterLevel)
 
-dygraph_ts_fun(DK_CH)
-rm(DK_CH)
+dygraph_ts_fun(BD_CH)
+rm(BD_CH)
 
 # 4. Fill gaps with correlations -----------------------------------------
 
@@ -64,12 +64,15 @@ rm(DK_CH)
 # 3) HB-CH Fall 2021
 #   - Still need to find a fix
 # 4) HB-SW Fall 2021
-#   - Tried using multi-regression linear model with TI-SW and QB-SW. Improved r^2 = .87
+#   - Used multiple linear regression 5 nearby sites (JB, JC, TI, QB, DF) r^ = 0.958. Added +0.06m delta
 # 5) HB-UW1 Fall 2021
-#   - QB-UW2 as correlate r^2 = 0.800 also added +0.08 m correction up, bc correlation didn't adequately tie timeseries. 
-# 6) - MB-CH Fall 
-# 
-
+#   - Filled with multiple linear regression from 4 sites (QB-UW2, QB-UW1, JB-UW1, JB-UW2) as corollaries r^2 = 0.952. Also added +0.05 m delta
+# 6) MB-CH Fall 2021
+#  - Filled with multiple linear regression from 5 sites (QB-UW1, TP-CH, Jones Road North Catchment Outlet, TI-SW, DF-SW) as corollaries r^2 = 0.9719. Also added +0.02 m delta.
+# 7) MB-SW Fall 2021
+# - Filled with multiple linear regression from 4 sites (QB-SW,  DF-SW,  TI-SW,  JB-SW) as corollaries r^2 = 0.979. Also add +0.03 m delta.
+# 8) MB-UW1 Fall 2021
+# - 
 
 # 4.1 BD-CH Fall 2021 -----------------------------------------------------
 
@@ -175,7 +178,7 @@ temp <- temp %>%
                         "1",
                         Flag),
          Notes = if_else(is.na(gap),
-                         "Gap filled with DK-UW2 as correllary r^2 = .985",
+                         "Gap filled with DK-UW2 as correllary r^2 = .978",
                          Notes),
          Site_Name = "DK-CH") %>% 
   select(-c(gap, fill, prediction)) 
@@ -249,7 +252,7 @@ temp <- temp %>%
   #Using prediction delta
   select(-prediction) %>% 
   #!!! Apply this correlation to the F2021 gap.
-  filter(Timestamp >= "2021-10-18 09:00:00" & Timestamp <= "2021-11-19 01:00:00") %>%
+  filter(Timestamp >= "2021-10-18 09:00:00" & Timestamp <= "2021-12-19 01:00:00") %>%
   mutate(waterLevel = if_else(is.na(gap),
                               prediction_delta,
                               gap),
@@ -257,7 +260,7 @@ temp <- temp %>%
                         "1",
                         Flag),
          Notes = if_else(is.na(gap),
-                         "Used multiple linear regression 5 nearby sites (JB, JC, TI, QB, DF) r^ = 0.958. Added +0.06cm delta",
+                         "Used multiple linear regression 5 nearby sites (JB, JC, TI, QB, DF) r^ = 0.958. Added +0.06m delta",
                          Notes),
          Site_Name = "HB-SW") %>%
   select(-c(gap, prediction_delta))
@@ -333,7 +336,7 @@ temp <- temp %>%
                         "1",
                         Flag),
          Notes = if_else(is.na(gap),
-                         "Gap filled with QB-UW2 as correllary r^2 = 0.800 also added +0.08 m correction up",
+                         "Gap filled with multiple linear regression from 4 sites (QB-UW2, QB-UW1, JB-UW1, JB-UW2) as correllary r^2 = 0.952. Also added +0.05 m delta",
                          Notes),
          Site_Name = "HB-UW1") %>% 
   select(-c(gap, prediction_delta)) 
@@ -347,6 +350,223 @@ rm(model, temp, test_plot)
 
 # 4.6 MB-CH Fall 2021  --------------------------------------------------------------------
 
+temp <- df %>% 
+  filter(Site_Name %in% c("MB-CH", "QB-UW1", "TP-CH", "DF-SW",
+                          "Jones Road North Catchment Outlet", "TI-SW")) %>% 
+  #MB_CH not installed until 03-10, but other sites installed way longer
+  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+  rename("gap" = `MB-CH`,
+         "fill1" = `QB-UW1`,
+         "fill2" = `TP-CH`,
+         "fill3" = `Jones Road North Catchment Outlet`,
+         "fill4" = `TI-SW`,
+         "fill5" = `DF-SW`) 
+
+#Plot correlations
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill4`)) +
+#     geom_point())
+
+#Make a model (linear)
+model <- lm(`gap` ~ `fill1`+`fill2`+`fill3`+`fill4`+`fill5`, data = temp)
+summary(model)
+
+#Apply model to df
+temp <- temp %>% 
+  mutate(prediction = predict(model, data.frame(fill1 = fill1,
+                                                fill2 = fill2, 
+                                                fill3 = fill3, 
+                                                fill4 = fill4,
+                                                fill5 = fill5))) %>% 
+  mutate(prediction_delta = prediction + 0.03) %>% 
+  select(-c(fill1, fill2, fill3, fill4, fill5))
+
+#Compare modeled prediction to data 
+# test_plot <- ggplot(data = temp, #%>%
+#                            # filter(Timestamp >= "2021-08-25 12:00:00" &
+#                            #        Timestamp <= "2022-01-31 12:00:00"),
+#                     mapping = aes(x = Timestamp,
+#                                   y = gap)) +
+#              geom_line() +
+#              geom_line(aes(y = prediction),
+#                         size = 0.1,
+#                         color = "tomato")  +
+#              geom_line(aes(y = prediction_delta),
+#                         size = 0.1,
+#                         color = "blue")  +
+#              ylab("waterLevel (m)")
+# 
+# (test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  select(-prediction)
+  filter(Timestamp >= "2021-10-14 12:15:00" & Timestamp <= "2021-11-18 19:15:00") %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction_delta,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Filled with multiple linear regression from 5 sites (QB-UW1, TP-CH, Jones Road North Catchment Outlet, TI-SW, DF-SW) as corollaries r^2 = 0.9719. Also added +0.02 m delta.",
+                         Notes),
+         Site_Name = "MB-CH") %>% 
+  select(-c(gap, predition_delta)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up the environment
+rm(model, temp, test_plot)
+
+# 4.7 MB-SW Fall 2021 -----------------------------------------------------
+
+temp <- df %>% 
+  filter(Site_Name %in% c("MB-SW", "QB-SW", "DF-SW", "TI-SW", "JB-SW")) %>% 
+  #MB_SW not installed until 03-10, but other sites installed way longer
+  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+  rename("gap" = `MB-SW`,
+         "fill1" = `QB-SW`,
+         "fill2" = `DF-SW`,
+         "fill3" = `TI-SW`,
+         "fill4" = `JB-SW`) 
+
+#Plot correlations
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill1`)) +
+#     geom_point())
+
+#Make a model (linear)
+model <- lm(gap ~ `fill1`+`fill2`+`fill3`+`fill4`, data = temp)
+summary(model)
+
+#Apply model to df
+temp <- temp %>% 
+  mutate(prediction = predict(model, data.frame(fill1 = fill1, 
+                                                fill2 = fill2,
+                                                fill3 = fill3, 
+                                                fill4 = fill4))) %>% 
+  mutate(prediction_delta = prediction + 0.03) %>% 
+  select(-c(fill1, fill2, fill3, fill4))
+
+#Compare modeled prediction to data 
+# test_plot <- ggplot(data = temp, #%>%
+#                            # filter(Timestamp >= "2021-08-25 12:00:00" &
+#                            #        Timestamp <= "2022-01-31 12:00:00"),
+#                     mapping = aes(x = Timestamp,
+#                                   y = gap)) +
+#              geom_line() +
+#              geom_line(aes(y = prediction),
+#                         size = 0.1,
+#                         color = "tomato")  +
+#              geom_line(aes(y = prediction_delta),
+#                         size = 0.1,
+#                         color = "blue")  +
+#              ylab("waterLevel (m)")
+# 
+# (test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  select(-prediction) %>% 
+  filter(Timestamp >= "2021-11-03 12:15:00" & Timestamp <= "2021-11-18 18:15:00") %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction_delta,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Filled with multiple linear regression from 5 sites (QB-UW1, TP-CH, Jones Road North Catchment Outlet, TI-SW, DF-SW) as corollaries r^2 = 0.979. Also added +0.03 m delta.",
+                         Notes),
+         Site_Name = "MB-SW") %>% 
+  select(-c(gap, prediction_delta)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up the environment
+rm(model, temp, test_plot)
+
+# 4.8 MB-UW1 Fall 2021 --------------------------------------------------------------
+
+temp <- df %>% 
+  filter(Site_Name %in% c("MB-UW1", "QB-UW1", "JB-UW2", "JC-UW1")) %>% 
+  #MB_UW1 not installed until 03-10, but other sites installed way longer
+  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+  rename("gap" = `MB-UW1`,
+         "fill1" = `QB-UW1`,
+         "fill2" = `JB-UW2`,
+         "fill3" = `JC-UW1`) 
+
+#Plot correlations
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill3`)) +
+#     geom_point())
+
+#Make a model (linear)
+model <- lm(gap ~ `fill1`+`fill2`+`fill3`, data = temp)
+summary(model)
+
+#Apply model to df
+temp <- temp %>% 
+  mutate(prediction = predict(model, data.frame(fill1 = fill1, 
+                                                fill2 = fill2,
+                                                fill3 = fill3))) %>% 
+  mutate(prediction_delta = prediction + 0.01) %>% 
+  select(-c(fill1, fill2, fill3))
+
+#Compare modeled prediction to data 
+# test_plot <- ggplot(data = temp %>%
+#                            filter(Timestamp >= "2021-08-25 12:00:00" &
+#                                   Timestamp <= "2022-01-31 12:00:00"),
+#                     mapping = aes(x = Timestamp,
+#                                   y = gap)) +
+#              geom_line() +
+#              geom_line(aes(y = prediction),
+#                         size = 0.1,
+#                         color = "tomato")  +
+#              geom_line(aes(y = prediction_delta),
+#                         size = 0.1,
+#                         color = "blue")  +
+#              ylab("waterLevel (m)")
+# 
+# (test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  select(-prediction) %>% 
+  filter(Timestamp >= "2021-11-03 12:15:00" & Timestamp <= "2021-11-18 18:15:00") %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction_delta,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Filled with multiple linear regression from 3 sites (QB-UW1,  JB-UW2, JC-UW1) as corollaries r^2 = 0.954. Also add +0.01 m delta.",
+                         Notes),
+         Site_Name = "MB-UW1") %>% 
+  select(-c(gap, prediction_delta)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up the environment
+rm(model, temp, test_plot)
+
+
+# 4.9 ---------------------------------------------------------------------
 
 
 
