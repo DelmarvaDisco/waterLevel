@@ -358,10 +358,10 @@ rm(TP_CH)
 # 3) HB-CH Fall 2021
 #   - Still need to find a fix
 # 4) HB-SW Fall 2021
-#   - Tried correlation from QB-SW and TI-SW, not very strong. Maybe do +- correction??
+#   - Tried using multi-regression linear model with TI-SW and QB-SW. Improved r^2 = .87
 # 5) HB-UW1 Fall 2021
 #   - QB-UW2 as correlate r^2 = 0.800 also added +0.08 m correction up, bc correlation didn't adequately tie timeseries. 
-# 6) - 
+# 6) - MB-CH Fall 
 # 
 
 
@@ -376,10 +376,10 @@ temp <- df %>%
          "fill" = `BD-SW`)
 
 #Plot correlation
-# (ggplot(data = temp,
-#         mapping = aes(x = `gap`,
-#                       y = `fill`)) +
-#   geom_point())
+(ggplot(data = temp,
+        mapping = aes(x = `gap`,
+                      y = `fill`)) +
+  geom_point())
 
 #Make a model (linear)
 model <- lm(`gap` ~ `fill`, data = temp)
@@ -390,17 +390,17 @@ temp <- temp %>%
   mutate(prediction = predict(model, data.frame(fill = fill)))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-09-25 12:00:00" &
-#                                   Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_point(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp, #%>%
+                           # filter(Timestamp >= "2021-09-25 12:00:00" &
+                           #        Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_point(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -488,8 +488,80 @@ rm(model, temp, test_plot)
 # Ignore this site for now. Large gap + weird behavior
 
 # 4.4 HB-SW Fall 2021 -----------------------------------------------------
+# 
+# temp <- df %>% 
+#   filter(Site_Name %in% c("HB-SW", "QB-SW", "TI-SW")) %>% 
+#   #HB-SW not installed until 2021-03-10
+#   filter(Timestamp >= "2021-03-10 21:30:00") %>% 
+#   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+#   rename("gap" = `HB-SW`,
+#          "fill1" = `QB-SW`,
+#          "fill2" = `TI-SW`)
+# 
+# #Plot correlation
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill1`)) +
+#     geom_point())
+# 
+# #Make a model (linear)
+# model <- lm(`gap` ~ `fill1`+`fill2`, data = temp)
+# summary(model)
+# 
+# model_qb <- lm(gap ~ fill1, data = temp)
+# summary(model_qb)
+# 
+# model_ti <- lm(gap ~ fill2, data = temp)
+# summary(model_ti)
+# 
+# #Apply model to df
+# temp <- temp %>% 
+#   mutate(prediction = predict(model, data.frame(fill1 = fill1, fill2 = fill2))) %>% 
+#   mutate(prediction_qb = predict(model_qb, data.frame(fill1 = fill1))) %>% 
+#   mutate(prediction_ti = predict(model_ti, data.frame(fill2 = fill2)))
+# 
+# #Compare modeled prediction to data 
+# test_plot <- ggplot(data = temp, #%>% 
+#                     # filter(Timestamp >= "2021-10-10 12:00:00" & 
+#                     #        Timestamp <= "2021-12-11 12:00:00"),
+#                     mapping = aes(x = Timestamp,
+#                                   y = gap)) +
+#   geom_line() +
+#   geom_point(aes(y = prediction),
+#              size = 0.1,
+#              color = "tomato") +
+#   geom_point(aes(y = prediction_qb),
+#              size = 0.1,
+#              color = "green") +
+#   geom_point(aes(y = prediction_ti),
+#              size = 0.1,
+#              color = "blue")
+# 
+# (test_plot)
+# 
+# #Add predicted values to data and note flags accordingly
+# temp <- temp %>% 
+#   #!!! Since this correlation was crappy, only apply it to the F2021 gap.
+#   filter(Timestamp >= "2021-10-18 09:00:00" & Timestamp <= "2021-11-19 01:00:00") %>% 
+#   mutate(waterLevel = if_else(is.na(gap),
+#                               prediction,
+#                               gap),
+#          Flag = if_else(is.na(gap),
+#                         "1",
+#                         Flag),
+#          Notes = if_else(is.na(gap),
+#                          "real bad",
+#                          Notes),
+#          Site_Name = "HB-SW") %>% 
+#   select(-c(gap, fill, prediction)) 
+# 
+# # Combine newly computed values to processed data
+# df <- bind_rows(temp, df)  %>% 
+#   distinct()
+# 
+# #Clean up environment
+# rm(model, temp, test_plot)
 
-# Ignore this site for now. Large gap + weird behavior
 
 # 4.5 HB-UW1 Fall 2021 ----------------------------------------------------
 
@@ -552,6 +624,12 @@ df <- bind_rows(temp, df)  %>%
 
 #Clean up environment
 rm(model, temp, test_plot)
+
+
+# 4.6 MB-CH Fall 2021  --------------------------------------------------------------------
+
+
+
 
 # XX. Export gap-filled data ----------------------------------------------
 
