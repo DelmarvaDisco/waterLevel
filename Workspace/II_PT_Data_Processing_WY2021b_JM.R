@@ -1901,19 +1901,19 @@ temp <- df %>%
 
 # More filtering
 temp <- temp %>% 
-  filter(Timestamp <= "2021-05-08 12:45:00" | Timestamp >= "2021-05-08 16:45:00") %>% 
-  filter(Timestamp <= "2021-05-20 12:45:00" | Timestamp >= "2021-05-20 21:45:00") %>% 
-  filter(Timestamp <= "2021-05-21 12:45:00" | Timestamp >= "2021-05-21 22:45:00") %>% 
+  filter(Timestamp <= "2021-05-08 16:45:00" | Timestamp >= "2021-05-08 21:45:00") %>% 
+  filter(Timestamp <= "2021-05-20 12:45:00" | Timestamp >= "2021-05-21 2:45:00") %>% 
+  filter(Timestamp <= "2021-05-21 12:45:00" | Timestamp >= "2021-05-22 5:45:00") %>% 
   filter(Timestamp <= "2021-06-17 9:00:00" | Timestamp >= "2021-06-17 17:00:00")
 
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-# temp2 <- dt %>% 
+# temp2 <- dt %>%
 #   filter(Site_Name == site)
 # 
-# temp_dy <- rbind(temp, temp2) %>% 
+# temp_dy <- rbind(temp, temp2) %>%
 #   mutate(waterLevel = waterLevel + 100)
 # 
 # dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
@@ -2073,10 +2073,10 @@ temp <- df %>%
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #plot in dygraphs
-# temp2 <- dt %>% 
+# temp2 <- dt %>%
 #   filter(Site_Name == site)
 # 
-# temp_dy <- rbind(temp, temp2) %>% 
+# temp_dy <- rbind(temp, temp2) %>%
 #   mutate(waterLevel = waterLevel + 100)
 # 
 # dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
@@ -2705,16 +2705,16 @@ temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
 #More filtering
 temp <- temp %>% 
-  filter(Timestamp <= "2021-10-18 13:00:00" | Timestamp >= "2021-10-18 20:00:00")
+  filter(Timestamp <= "2021-10-18 9:00:00" | Timestamp >= "2021-10-19 12:30:00")
 
 #plot in dygraphs
-# temp2 <- dt %>% 
-#   filter(Site_Name == site)
-# 
-# temp_dy <- rbind(temp, temp2) %>% 
-#   mutate(waterLevel = waterLevel + 100)
-# 
-# dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+temp2 <- dt %>%
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>%
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>%  
