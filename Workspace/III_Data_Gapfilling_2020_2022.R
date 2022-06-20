@@ -495,8 +495,8 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("HB-UW1", "QB-UW2")) %>% 
-  #BD_CH not installed until 03-02
-  filter(Timestamp >= "2021-03-10 12:00:00") %>% 
+  #HB-UW1 not installed until 2021-03-10
+  filter(Timestamp >= "2021-03-10 21:30:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `HB-UW1`,
          "fill" = `QB-UW2`)
@@ -514,6 +514,7 @@ summary(model)
 #Apply model to df
 temp <- temp %>% 
   mutate(prediction = predict(model, data.frame(fill = fill))) %>% 
+  #Added +0.08 m to connect the corrected timeseries. 
   mutate(prediction = prediction + 0.08)
 
 #Compare modeled prediction to data 
@@ -531,6 +532,8 @@ test_plot <- ggplot(data = temp, #%>%
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
+  #!!! Since this correlation was crappy, only apply it to the F2021 gap.
+  filter(Timestamp >= "2021-10-18 09:00:00" & Timestamp <= "2021-11-19 01:00:00") %>% 
   mutate(waterLevel = if_else(is.na(gap),
                               prediction,
                               gap),
