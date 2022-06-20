@@ -54,15 +54,6 @@ MB_CH <- df %>%
 dygraph_ts_fun(MB_CH)
 rm(MB_CH)
 
-#MB-SW
-MB_SW <- df %>%
-  filter(Site_Name == "MB-SW") %>%
-  mutate(waterLevel = waterLevel + 100) %>%
-  select(Timestamp, waterLevel)
-
-dygraph_ts_fun(MB_SW)
-rm(MB_SW)
-
 
 # 4. Fill gaps with correlations -----------------------------------------
 
@@ -114,7 +105,8 @@ test_plot <- ggplot(data = temp, #%>%
              geom_line() +
              geom_point(aes(y = prediction),
                         size = 0.1,
-                        color = "tomato")
+                        color = "tomato") +
+             ylab("waterLevel (m)")
 
 (test_plot)
 
@@ -167,7 +159,8 @@ test_plot <- ggplot(data = temp %>%
              geom_line() +
              geom_point(aes(y = prediction),
                         size = 0.1,
-                        color = "tomato")
+                        color = "tomato")  +
+             ylab("waterLevel (m)")
 
 (test_plot)
 
@@ -201,7 +194,7 @@ rm(model, temp, test_plot)
 #Using multiple sites improves performance
 temp <- df %>%
   filter(Site_Name %in% c("HB-SW", "QB-SW", "TI-SW", 
-                          "JB-SW", "JC-SW")) %>%
+                          "JB-SW", "JC-SW", "DF-SW")) %>%
   #HB-SW not installed until 2021-03-10
   filter(Timestamp >= "2021-03-10 21:30:00") %>%
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>%
@@ -209,39 +202,27 @@ temp <- df %>%
          "fill1" = `QB-SW`,
          "fill2" = `TI-SW`,
          "fill3" = `JB-SW`,
-         "fill4" = `JC-SW`)
+         "fill4" = `JC-SW`,
+         "fill5" = `DF-SW`)
 
 #Plot correlation
-# (ggplot(data = temp,
-#         mapping = aes(x = `gap`,
-#                       y = `fill4`)) +
-#     geom_point())
+(ggplot(data = temp,
+        mapping = aes(x = `gap`,
+                      y = fill5)) +
+    geom_point())
 
 #Make a model (linear)
-model <- lm(`gap` ~ `fill1`+`fill2`+`fill3`+`fill4`, data = temp)
+model <- lm(`gap` ~ `fill1`+`fill2`+`fill3`+`fill4`+`fill5`, data = temp)
 summary(model)
-
-model_qb <- lm(gap ~ fill1, data = temp)
-summary(model_qb)
-
-model_ti <- lm(gap ~ fill2, data = temp)
-summary(model_ti)
-
-model_jb <- lm(gap ~ fill3, data = temp)
-summary(model_jb)
-
-model_jc <- lm(gap ~ fill4, data = temp)
-summary(model_jc)
 
 #Apply model to df
 temp <- temp %>%
   mutate(prediction = predict(model, data.frame(fill1 = fill1, 
                                                 fill2 = fill2,
                                                 fill3 = fill3,
-                                                fill4 = fill4))) %>%
-  mutate(prediction_qb = predict(model_qb, data.frame(fill1 = fill1))) %>%
-  mutate(prediction_ti = predict(model_ti, data.frame(fill2 = fill2))) %>% 
-  mutate(prediction_jc = predict(model_jc, data.frame(fill4 = fill4)))
+                                                fill4 = fill4,
+                                                fill5 = fill5))) %>% 
+  select(-c(fill1, fill2, fill3, fill4, fill5))
 
 #Compare modeled prediction to data
 test_plot <- ggplot(data = temp, #%>%
@@ -253,15 +234,7 @@ test_plot <- ggplot(data = temp, #%>%
   geom_point(aes(y = prediction),
              size = 0.1,
              color = "tomato") +
-  geom_point(aes(y = prediction_qb),
-             size = 0.1,
-             color = "green") +
-  geom_point(aes(y = prediction_ti),
-             size = 0.1,
-             color = "blue") +
-  geom_point(aes(y = prediction_jc),
-             size = 0.1,
-             color = "purple")
+  ylab("waterLevel (m)")
 
 (test_plot)
 
@@ -286,45 +259,53 @@ df <- bind_rows(temp, df)  %>%
   distinct()
 
 # #Clean up environment
-rm(model, temp, test_plot)
+rm(model, temp, test_plot, model_jb, model_jc, model_ti, model_qb)
 
 
 # 4.5 HB-UW1 Fall 2021 ----------------------------------------------------
 
 temp <- df %>% 
-  filter(Site_Name %in% c("HB-UW1", "QB-UW2")) %>% 
+  filter(Site_Name %in% c("HB-UW1", "QB-UW2", "QB-UW1", "JB-UW1")) %>% 
   #HB-UW1 not installed until 2021-03-10
   filter(Timestamp >= "2021-03-10 21:30:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `HB-UW1`,
-         "fill" = `QB-UW2`)
+         "fill1" = `QB-UW2`,
+         "fill2" = `QB-UW1`,
+         "fill3" = `JB-UW1`)
 
-#Plot correlation
-(ggplot(data = temp,
-        mapping = aes(x = `gap`,
-                      y = `fill`)) +
-  geom_point())
+#Plot correlations
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill2`)) +
+#   geom_point())
 
 #Make a model (linear)
-model <- lm(`gap` ~ `fill`, data = temp)
+model <- lm(`gap` ~ `fill1` + `fill2` + `fill3`, data = temp)
 summary(model)
 
 #Apply model to df
 temp <- temp %>% 
-  mutate(prediction = predict(model, data.frame(fill = fill))) %>%
+  mutate(prediction = predict(model, data.frame(fill1 = fill1,
+                                                fill2 = fill2, 
+                                                fill3 = fill3))) %>%
   #Added +0.08 m to connect the corrected timeseries.
-  mutate(prediction = prediction + 0.08)
+  mutate(prediction_delta = prediction + 0.05)
 
 #Compare modeled prediction to data 
-test_plot <- ggplot(data = temp, #%>% 
-                      # filter(Timestamp >= "2021-10-10 12:00:00" &
-                      #        Timestamp <= "2021-12-11 12:00:00"),
+test_plot <- ggplot(data = temp %>% 
+                      filter(Timestamp >= "2021-10-10 12:00:00" &
+                             Timestamp <= "2021-12-11 12:00:00"),
                     mapping = aes(x = Timestamp,
                                   y = gap)) +
              geom_line() +
              geom_point(aes(y = prediction),
-                        size = 0.1,
-                        color = "tomato")
+                        size = 0.05,
+                        color = "tomato") +
+             geom_point(aes(y = prediction_delta),
+                        size = 0.05,
+                        color = "blue") +
+             ylab("waterLevel (m)")
 
 (test_plot)
 
