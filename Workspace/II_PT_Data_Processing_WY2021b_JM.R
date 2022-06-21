@@ -2284,11 +2284,15 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#Extra filtering 
+temp <- temp %>% 
+  filter(Timestamp <= "2021-10-18 15:00:00" | Timestamp >= "2021-10-19 2:00:00")
+
 #plot in dygraphs
-# temp2 <- dt %>% 
+# temp2 <- dt %>%
 #   filter(Site_Name == site)
 # 
-# temp_dy <- rbind(temp, temp2) %>% 
+# temp_dy <- rbind(temp, temp2) %>%
 #   mutate(waterLevel = waterLevel + 100)
 # 
 # dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))

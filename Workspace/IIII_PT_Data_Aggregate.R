@@ -94,8 +94,8 @@ df <- JM_output %>%
 
 # 4.3 Plot the checks --------------------------------------------------
 
-checks_interest <- checks #%>%
-  # filter(Site_Name %in% c("TS-SW", "BD-SW", "TS-CH", "BD-CH"))
+checks_interest <- checks %>%
+  filter(Site_Name %in% c("JA-SW", "NB-SW", "JC-SW", "JB-UW1"))
 #Checks from latest download aren't reliable (baro missmatch)
 #filter(!file == "data//checks_20211112_JM.csv")
 
