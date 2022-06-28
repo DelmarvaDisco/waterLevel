@@ -6,9 +6,9 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Notes:
-# Is it worth while to incorperate multiple sites into correlary models?
+# Is it worth while to incorporate multiple sites into correlate models?
 
-# 1. Libraries and workspace ----------------------------------------------
+# 1. Libraries and work space ----------------------------------------------
 
 remove(list = ls())
 
@@ -46,13 +46,14 @@ Sites <- unique(df$Site_Name) %>%
   as_tibble() 
 
 #Sandbox to look at timeseries
-OB_UW1 <- df %>%
-  filter(Site_Name == "OB-UW1") %>%
+TB_UW2 <- df %>%
+  filter(Site_Name == "TB-UW2") %>%
+  filter(!Flag == "2") %>% 
   mutate(waterLevel = waterLevel + 100) %>%
   select(Timestamp, waterLevel)
 
-dygraph_ts_fun(OB_UW1)
-rm(OB_UW1)
+dygraph_ts_fun(TB_UW2)
+rm(TB_UW2)
 
 # 4. Fill gaps with correlations -----------------------------------------
 
@@ -772,7 +773,7 @@ temp <- temp %>%
                         "1",
                         Flag),
          Notes = if_else(is.na(gap),
-                         "",
+                         "Filled with multiple linear regression from 4 sites (JC-SW, JA-SW, TI-SW, DF-SW) as corollaries r^2 = 0.9751. Also added a +0.03m delta.",
                          Notes),
          Site_Name = "OB-UW1") %>% 
   select(-c(gap, prediction_delta)) 
@@ -785,7 +786,149 @@ df <- bind_rows(temp, df)  %>%
 rm(model, temp, test_plot)
 
 
-# 4.12 --------------------------------------------------------------------
+# 4.12 TB-SW Fall 2021 --------------------------------------------------------------------
+
+temp <- df %>% 
+  filter(!Flag == "2") %>% 
+  filter(Site_Name %in% c("TB-SW", "TA-SW", "ND-SW",
+                          "FN-SW", "TB-UW3", "Tiger Paw Catchment Outlet")) %>% 
+  pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+  rename("gap" = `TB-SW`,
+         "fill1" = `TA-SW`,
+         "fill2" = `ND-SW`,
+         "fill3" = `FN-SW`,
+         "fill4" = `TB-UW3`,
+         "fill5" = `Tiger Paw Catchment Outlet`)
+
+#Plot correlations
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill3`)) +
+#     geom_point())
+
+#Make a model (linear)
+model <- lm(gap ~ `fill1`+`fill2`+`fill3`+`fill4`+`fill5`, data = temp)
+summary(model)
+
+#Apply model to df
+temp <- temp %>% 
+  mutate(prediction = predict(model, data.frame(fill1 = fill1, 
+                                                fill2 = fill2,
+                                                fill3 = fill3,
+                                                fill4 = fill4,
+                                                fill5 = fill5))) %>% 
+  # mutate(prediction_delta = prediction - 0.00) %>% 
+  select(-c(fill1, fill2, fill3, fill4, fill5))
+
+#Compare modeled prediction to data 
+test_plot <- ggplot(data = temp %>%
+                      filter(Timestamp >= "2021-07-25 12:00:00" &
+                               Timestamp <= "2022-01-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+  geom_line() +
+  geom_line(aes(y = prediction),
+            size = 0.1,
+            color = "tomato")  +
+  geom_line(aes(y = prediction_delta),
+            size = 0.1,
+            color = "blue")  +
+  ylab("waterLevel (m)")
+
+(test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  filter(Timestamp >= "2021-09-19 15:00:00" & Timestamp <= "2021-12-18 16:15:00") %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Filled with multiple linear regression from 5 sites(TA-SW, ND-SW, FN-SW, TB-UW3, Tiger Paw Catchment Outlet) as corrolaries r^2 = 0.9818. Delta value = 0m",
+                         Notes),
+         Site_Name = "TB-SW") %>% 
+  select(-c(gap, prediction)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up the environment
+rm(model, temp, test_plot)
+
+
+# 4.13 TB-UW2 Fall 2020 ------------------------------------------------------------------
+
+temp <- df %>% 
+  filter(!Flag == "2") %>% 
+  filter(Site_Name %in% c("TB-UW2", "DB-UW1", "TB-UW1", "TB-UW3")) %>% 
+  pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+  rename("gap" = `TB-UW2`,
+         "fill1" = `DB-UW1`,
+         "fill2" = `TB-UW1`,
+         "fill3" = `TB-UW3`)
+
+#Plot correlations
+(ggplot(data = temp,
+        mapping = aes(x = `gap`,
+                      y = `fill3`)) +
+    geom_point())
+
+#Make a model (linear)
+model <- lm(gap ~ `fill1`+`fill2`+`fill3`, data = temp)
+summary(model)
+
+#Apply model to df
+temp <- temp %>% 
+  mutate(prediction = predict(model, data.frame(fill1 = fill1, 
+                                                fill2 = fill2,
+                                                fill3 = fill3))) %>% 
+  select(-c(fill1, fill2, fill3))
+
+#Compare modeled prediction to data 
+test_plot <- ggplot(data = temp %>%
+                      filter(Timestamp >= "2020-07-25 12:00:00" &
+                               Timestamp <= "2020-10-30 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+  geom_line() +
+  geom_line(aes(y = prediction),
+            size = 0.1,
+            color = "tomato")  +
+  ylab("waterLevel (m)")
+
+(test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  filter(Timestamp >= "2020-09-19 15:00:00" & Timestamp <= "2020-11-01 16:15:00") %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Filled with multiple linear regression from 3 sites (DB-UW1, TB-UW1, TB-UW3) r^2 = 0.9818. No delta value.",
+                         Notes),
+         Site_Name = "TB-SW") %>% 
+  select(-c(gap, prediction)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up the environment
+rm(model, temp, test_plot)
+
+
+# 4.14 TS-CH Fall 2021 -------------------------------------------------------------------
+
+
+
 
 
 
