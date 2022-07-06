@@ -49,11 +49,15 @@ checks <- files[str_detect(files, "checks_")]
 checks <- checks %>% 
   map_dfr(download_checks) 
 
-# 4.2 Download the J. Maze outputs ------------------------------------------------
+# 3. Download the J. Maze outputs ------------------------------------------------
 
 df <- read_csv(file = paste0(data_dir, "output_JM_2019_2022.csv"))
 
-# 4.3 Plot the checks --------------------------------------------------
+
+# 4.1 Augment checks file -------------------------------------------------
+
+
+# 4.2 Plot the checks --------------------------------------------------
 
 # checks_interest <- checks %>%
 #   filter(Site_Name %in% c("JA-SW", "NB-SW", "JC-SW", "JB-UW1"))
@@ -76,7 +80,7 @@ df <- read_csv(file = paste0(data_dir, "output_JM_2019_2022.csv"))
 # (checks_plot)
 
 
-# 4. Aggregate waterLevel to the daily timestep -------------------------------
+# 5. Aggregate waterLevel to the daily timestep -------------------------------
 
 df <- df %>% 
   filter(!Flag == "2") %>% 
@@ -85,7 +89,7 @@ df <- df %>%
   summarise(dly_mean_wtrlvl = mean(waterLevel))
 
 
-# 4.1 Quick plots of timeseries together ----------------------------------
+# 5.1 Quick plots of timeseries together ----------------------------------
 
 
 # df_interest <- df %>% 
@@ -102,9 +106,9 @@ df <- df %>%
 # 
 # dygraph_ts_fun(df_interest)
 
-# Xport! ------------------------------------------------------------------
+# 6 Xport! ------------------------------------------------------------------
 
-write_csv(df, paste0(data_dir,"dly_mean_ouput_JM_2019_2022.csv"))
+write_csv(df, paste0(data_dir,"dly_mean_output_JM_2019_2022.csv"))
 
 write_csv(checks, paste0(data_dir, "all_chk_JM.csv"))
 
