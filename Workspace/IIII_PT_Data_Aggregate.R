@@ -26,42 +26,9 @@ data_dir <- "data//"
 #Create a big list of files which you can query later
 files <- list.files(paste0("data//"), full.names =  TRUE, recursive = T) 
 
-# 2. Prior to April 2019 by N. Jones ------------------------------------------
+# 2. All data after Fall 2019 by J. Maze  -------------------------------------------------
 
-# #Read Choptank WY2019 sheet
-# owl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 3)
-# gwl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 2)
-# swl <- read_xlsx(paste0(data_dir,"Choptank_Wetlands_WY2019.xlsx"), sheet = 1)
-# 
-# #Merge the sheets 
-# dx <- full_join(owl, gwl, by = "Timestamp")
-# dx <- full_join(dx, swl, by = "Timestamp")
-# rm(owl, gwl, swl)
-# 
-# #Covert everything except "Timestamp" to character, to make merging easier. 
-# dx <- dx %>% 
-#   mutate_if(is.numeric, as.character)
-# 
-# #Pivot to long format
-# dx <- pivot_longer(dx, cols = -c("Timestamp"), 
-#                    names_to = "Site_Name", 
-#                    values_to = "waterLevel")
-# 
-# #Check make a tibble with list of site names
-# site_names <- as_tibble(unique(dx$Site_Name))
-
-# 3. Jones processing Wardinski (Select Sites 2019 - 2020) ------------------------------------------
-
-# dt <- files %>% 
-#   as_tibble() %>% 
-#   filter(str_detect(value,"output.csv")) %>% 
-#   as_vector() %>% 
-#   map_dfr(function(x) read_csv(x, col_types = list('T', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c')))
-
-# 4. After Fall 2019 by J. Maze  -------------------------------------------------
-
-
-# 4.1 Download the checks ---------------------------------------------------------------------
+# 2.1 Download the checks ---------------------------------------------------------------------
 
 # Quick funtion to keep the file path as a column for the checks. 
 download_checks <- function(file_path){
@@ -82,73 +49,62 @@ checks <- files[str_detect(files, "checks_")]
 checks <- checks %>% 
   map_dfr(download_checks) 
 
-
 # 4.2 Download the J. Maze outputs ------------------------------------------------
 
-JM_output <- files[str_detect(files, "output_")]
-
-df <- JM_output %>% 
-  map_dfr(read_csv) %>%  
-  mutate(Timestamp = ymd_hms(Timestamp, tz = "GMT"))
-
+df <- read_csv(file = paste0(data_dir, "output_JM_2019_2022.csv"))
 
 # 4.3 Plot the checks --------------------------------------------------
 
-checks_interest <- checks %>%
-  filter(Site_Name %in% c("JA-SW", "NB-SW", "JC-SW", "JB-UW1"))
-#Checks from latest download aren't reliable (baro missmatch)
-#filter(!file == "data//checks_20211112_JM.csv")
+# checks_interest <- checks %>%
+#   filter(Site_Name %in% c("JA-SW", "NB-SW", "JC-SW", "JB-UW1"))
 
-checks_plot <- ggplot(data = checks_interest, 
-                           aes(x = Site_Name,
-                               y = measured_diff,
-                               fill = file)) +
-  geom_col(position = position_dodge(width = 0.75,
-                                     preserve = "single"),
-           color = "black",
-           width = 0.75) + 
-  theme_bw() +
-  theme(axis.text = element_text(size = 8,
-                                 face = "bold",
-                                 angle = 90),
-        axis.title.x = element_text()) +
-  ylab("(sensor - field)")
+# checks_plot <- ggplot(data = checks_interest, 
+#                            aes(x = Site_Name,
+#                                y = measured_diff,
+#                                fill = file)) +
+#   geom_col(position = position_dodge(width = 0.75,
+#                                      preserve = "single"),
+#            color = "black",
+#            width = 0.75) + 
+#   theme_bw() +
+#   theme(axis.text = element_text(size = 8,
+#                                  face = "bold",
+#                                  angle = 90),
+#         axis.title.x = element_text()) +
+#   ylab("(sensor - field)")
+# 
+# (checks_plot)
 
-(checks_plot)
 
-# Dygraph of certain sites ------------------------------------------------
+# 4. Aggregate waterLevel to the daily timestep -------------------------------
 
 df <- df %>% 
-  as_tibble() %>% 
-  mutate(waterLevel = round(waterLevel, digits = 4)) %>% 
+  filter(!Flag == "2") %>% 
   mutate(Date = str_sub(as.character(Timestamp), start = 1, end = 10)) %>% 
   group_by(Date, Site_Name) %>% 
   summarise(dly_mean_wtrlvl = mean(waterLevel))
 
-#Some overlapping data points need to be removed
-df <- df %>% 
-  distinct(Date, Site_Name, .keep_all =  TRUE) %>% 
-  mutate("Date" = ymd(Date))
 
-# Find the differing values between data frames and plot them -------------
+# 4.1 Quick plots of timeseries together ----------------------------------
 
-df_interest <- df %>% 
-  filter(Site_Name %in% c("BD-CH", "BD-SW", "TS-CH", 
-                          "DK-CH", "TS-SW", "DK-SW", "ND-SW")) %>% 
-  mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
-  filter(waterLevel >= 97) %>% 
-  rename(Timestamp = Date) %>% 
-  select(-dly_mean_wtrlvl)
 
-df_interest <- pivot_wider(data = df_interest,
-                           names_from = c("Site_Name"),
-                           values_from = "waterLevel")
-
-dygraph_ts_fun(df_interest)
+# df_interest <- df %>% 
+#   filter(Site_Name %in% c("MB-SW", "OB-SW", "HB-SW")) %>% 
+#   mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
+#   filter(waterLevel >= 97) %>% 
+#   rename(Timestamp = Date) %>% 
+#   select(-dly_mean_wtrlvl)
+# 
+# df_interest <- pivot_wider(data = df_interest,
+#                            names_from = c("Site_Name"),
+#                            values_from = "waterLevel") %>% 
+#   mutate(Timestamp = ymd(Timestamp))
+# 
+# dygraph_ts_fun(df_interest)
 
 # Xport! ------------------------------------------------------------------
 
-write_csv(df, paste0(data_dir,"all_data_JM.csv"))
+write_csv(df, paste0(data_dir,"dly_mean_ouput_JM_2019_2022.csv"))
 
 write_csv(checks, paste0(data_dir, "all_chk_JM.csv"))
 

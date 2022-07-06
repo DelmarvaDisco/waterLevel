@@ -1146,8 +1146,6 @@ temp <- df %>%
          "fill4" = `TP-CH`,
          "fill5" = `JC-UW1`,
          "fill6" = `JB-UW2`) 
-  #This well dries fairly early, removing the dry data points improves the model fit. 
-  # filter(gap >= -1.38)
 
 #Plot correlations
 # (ggplot(data = temp,
@@ -1166,42 +1164,40 @@ temp <- temp %>%
                                                 fill3 = fill3,
                                                 fill4 = fill4,
                                                 fill5 = fill5,
-                                                fill6 = fill6))) %>%
-  mutate(prediction_delta = prediction + 0.03) %>%
+                                                fill6 = fill6))) %>% 
   select(-c(fill1, fill2, fill3, fill4, fill5, fill6))
 
 #Compare modeled prediction to data
-test_plot <- ggplot(data = temp, #%>%
-                           # filter(Timestamp >= "2021-09-25 12:00:00" &
-                           #        Timestamp <= "2021-12-31 12:00:00"),
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-09-25 12:00:00" &
+                                  Timestamp <= "2021-12-31 12:00:00"),
                     mapping = aes(x = Timestamp,
                                   y = gap)) +
              geom_line() +
              geom_line(aes(y = prediction),
                         size = 0.1,
                         color = "tomato")  +
-             geom_line(aes(y = prediction_delta),
-                        size = 0.1,
-                        color = "blue")  +
+             # geom_line(aes(y = prediction_delta),
+             #            size = 0.1,
+             #            color = "blue")  +
              ylab("waterLevel (m)")
 
 (test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>%
-  select(-prediction) %>%
   filter(Timestamp >= "2021-10-20 12:00:00" & Timestamp <= "2021-11-18 13:15:00") %>%
   mutate(waterLevel = if_else(is.na(gap),
-                              prediction_delta,
+                              prediction,
                               gap),
          Flag = if_else(is.na(gap),
                         "1",
                         Flag),
          Notes = if_else(is.na(gap),
-                         "Bad model fit. Worth keeping data?",
+                         "Bad model fit (r^2 = 0.803) using multiple linear regression with 6 sites (JB-UW1, QB-UW1, QB-UW2, TP-CH, JC-UW1, JB-UW2). No delta value",
                          Notes),
          Site_Name = "XB-UW1") %>%
-  select(-c(gap, prediction_delta))
+  select(-c(gap, prediction))
 
 # Combine newly computed values to processed data
 df <- bind_rows(temp, df)  %>%
@@ -1210,11 +1206,9 @@ df <- bind_rows(temp, df)  %>%
 #Clean up the environment
 rm(model, temp, test_plot)
 
+# 5. Export gap-filled data ----------------------------------------------
 
-
-# XX. Export gap-filled data ----------------------------------------------
-
-
+write_csv(df, paste0(data_dir,"output_JM_2019_2022.csv"))
 
   
 
