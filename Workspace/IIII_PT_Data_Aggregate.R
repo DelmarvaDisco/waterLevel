@@ -92,16 +92,16 @@ df <- df %>%
 # 5.1 Quick plots of timeseries together ----------------------------------
 
 
-# df_interest <- df %>% 
-#   filter(Site_Name %in% c("MB-SW", "OB-SW", "HB-SW")) %>% 
-#   mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
-#   filter(waterLevel >= 97) %>% 
-#   rename(Timestamp = Date) %>% 
+# df_interest <- df %>%
+#   filter(Site_Name %in% c("XB-SW")) %>%
+#   mutate(waterLevel = dly_mean_wtrlvl + 100) %>%
+#   filter(waterLevel >= 97) %>%
+#   rename(Timestamp = Date) %>%
 #   select(-dly_mean_wtrlvl)
 # 
 # df_interest <- pivot_wider(data = df_interest,
 #                            names_from = c("Site_Name"),
-#                            values_from = "waterLevel") %>% 
+#                            values_from = "waterLevel") %>%
 #   mutate(Timestamp = ymd(Timestamp))
 # 
 # dygraph_ts_fun(df_interest)
