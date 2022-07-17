@@ -70,7 +70,7 @@ field_logs <- read_csv(paste0(data_dir, "20210525_Downloads//well_log.csv"))
 
 #create df of site name, sonde_id, and measured water level & Notes
 field_logs<-field_logs %>% 
-  select(Site_Name, Sonde_ID, Relative_water_level_m, Notes, Well_head_m, Depth_to_water_m) %>% 
+  select(Site_Name, Sonde_ID, Relative_water_level_m, Notes, Well_head_m, Depth_to_water_m, Date) %>% 
   mutate(Relative_water_level_m = as.numeric(Relative_water_level_m))
 
 #Join field log to master df. First, make Sonde_ID a character

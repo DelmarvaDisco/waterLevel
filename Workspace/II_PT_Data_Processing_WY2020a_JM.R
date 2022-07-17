@@ -50,8 +50,8 @@ data_dir<-"data\\"
 
 #list pt, baro, and log file locations
 files<-list.files(paste0(data_dir, "20200508_Downloads\\export"), full.names =  TRUE) 
-  pt_files<-files[!str_detect(files, "log")]
-  pt_files<-pt_files[!str_detect(pt_files, "Baro")]
+pt_files<-files[!str_detect(files, "log")]
+pt_files<-pt_files[!str_detect(pt_files, "Baro")]
 
 #gather pt data
 df <- pt_files %>% map_dfr(download_fun)
@@ -64,7 +64,7 @@ field_logs<-read_csv(paste0(data_dir, "20200508_Downloads\\well_log.csv"))
 
 #create df of site name, sonde_id, and measured offset
 field_logs<-field_logs %>% 
-  select(Site_Name, Sonde_ID, Relative_water_level_m, Well_head_m, Depth_to_water_m, Notes)
+  select(Site_Name, Sonde_ID, Relative_water_level_m, Well_head_m, Depth_to_water_m, Date, Notes)
 
 #Check to make sure pt files match field logs
 #Commented out this step to speed up run time
