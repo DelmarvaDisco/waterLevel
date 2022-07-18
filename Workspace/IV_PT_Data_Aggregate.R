@@ -6,7 +6,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Notes and issues:
-# - How to keep a notes column after aggregating to daily timestep??
+# - How to keep a Notes column after aggregating to daily time step??
 
 # 1.0 Libraries and work space ----------------------------------------------
 
@@ -88,11 +88,11 @@ temp <- checks %>%
          Site_ID %in% lost_F2021) |
          (file == "data//checks_20201015_JM.csv" &
          Site_ID == "TB-UW2")) %>% 
-  #Notes mentioning modeled data
+  #Notes mentioning use of modeled data
   mutate(Notes = paste0(Notes, ". Used modeled data for check, no data on download date.")) %>%
   #Remove columns for correction
   select(-c(measured_diff, sensor_wtrlvl)) %>% 
-  #Join with temp to get modeled values
+  #Join df with temp to get modeled values to replace incorrect checks
   left_join(., df, by = c("Date", "Site_ID")) %>% 
   #Use modeled data to calculate checks
   mutate(sensor_wtrlvl = dly_mean_wtrlvl,
@@ -101,24 +101,26 @@ temp <- checks %>%
   select(-c(dly_mean_wtrlvl, Flag))
 
 checks1 <- checks %>% 
-  #Remove the incorrect checks from the checks file
+  #Remove the incorrect checks from the checks file. Calculated these values with wrong data periods. 
   filter(!(file == "data//checks_20211112_JM.csv" &
          Site_ID %in% lost_F2021)| 
          (file == "data//checks_20201015_JM.csv" &
          Site_ID == "TB-UW2")) 
 
-#Combine original checks and modeled values
-checks1 <- bind_rows(checks1, temp) %>% 
+#Combine original checks with modeled values in temp
+checks1 <- bind_rows(checks1, temp)
   
-rm(temp)
+rm(temp, lost_F2021)
 
 
-# 3.2 Pull checks based on df -------------------------------------------------
+# 3.2 Pull checks values from df -------------------------------------------------
 
 checks2 <- checks %>% 
   select(-c(measured_diff, sensor_wtrlvl)) %>% 
+  #Pull checks values from the day pior to download. Oftentimes there's limited data on download days. 
   mutate(Date_minus = Date - days(1)) %>% 
   left_join(., df, by = c("Date", "Site_ID")) %>% 
+  mutate(Notes = paste0(Notes, ". Used modeled data for check.")) %>% 
   mutate(sensor_wtrlvl = dly_mean_wtrlvl,
          measured_diff = dly_mean_wtrlvl - Relative_water_level_m) %>% 
   #Remove extra columns
@@ -127,24 +129,31 @@ checks2 <- checks %>%
 # 3.3 Plot the checks --------------------------------------------------
 
 #!!! Some of the checks values are really wonky from improper measurements 
-#!!! and unaligned download dates. In some circumstances, I filter out checks values. 
+#!!! and unaligned download dates. In those circumstances, I filter out checks values. 
 
-# checks_interest <- checks %>% 
-#   filter(!Site_ID == "HB-CH") %>%
-#   filter(!(Site_ID %in% c("NB-SW", "ND-SW", "TB-UW2") & 
-#          file == "data//checks_20201015_JM.csv")) %>%
-#   filter(!(Site_ID %in% c("DK-UW1") & 
-#           file == "data//checks_20210525_JM.csv")) %>% 
-#   filter(!(Site_ID %in% c("ND-UW1", "ND-UW2", "ND-UW3", "TA-SW", "BD-SW", "MB-SW") & 
-#          file == "data//checks_20211112_JM.csv"))
-# 
-# checks_interest <- checks2 %>% 
-#   filter(!Site_ID == "HB-CH") %>%
-#   filter(!(Site_ID %in% c("NB-SW", "ND-SW") & 
-#           file == "data//checks_20201015_JM.csv")) %>% 
-#   filter(!(Site_ID %in% c("ND-UW1", "ND-UW2", "TA-SW", "MB-SW") & 
-#            file == "data//checks_20211112_JM.csv"))
+# Checks taken from specific downloads (more incorrect values here)
+checks_interest <- checks1 %>%
+  filter(!Site_ID == "HB-CH") %>%
+  filter(!(Site_ID %in% c("NB-SW", "ND-SW", "TB-UW2") &
+         file == "data//checks_20201015_JM.csv")) %>%
+  filter(!(Site_ID %in% c("DK-UW1") &
+          file == "data//checks_20210525_JM.csv")) %>%
+  filter(!(Site_ID %in% c("ND-UW1", "ND-UW2", "ND-UW3", "TA-SW", "BD-SW", "MB-SW") &
+         file == "data//checks_20211112_JM.csv"))
 
+# Checks taken from processed data (slightly more error)
+checks_interest <- checks2 %>%
+  filter(!Site_ID == "HB-CH") %>%
+  filter(!(Site_ID %in% c("NB-SW", "ND-SW") &
+          file == "data//checks_20201015_JM.csv")) %>%
+  filter(!(Site_ID == "DK-UW1" & 
+           file == "data//checks_20210525_JM.csv")) %>% 
+  filter(!(Site_ID %in% c("ND-UW1", "ND-UW2", "TA-SW", "MB-SW", "BD-SW") &
+           file == "data//checks_20211112_JM.csv")) %>% 
+  filter(Site_ID %in% c("MB-SW", "OB-SW", "HB-SW", "XB-SW", "TP-CH",
+                        "TS-SW", "DK-SW", "ND-SW"))
+
+#Plot differences between sensors and field measured values for checks. 
 checks_plot <- ggplot(data = checks_interest,
                            aes(x = Site_ID,
                                y = measured_diff,
@@ -163,25 +172,31 @@ checks_plot <- ggplot(data = checks_interest,
 
 (checks_plot)
 
+rm(checks1, checks2, checks_plot)
+
 # 4.0 Quick plots of timeseries together ----------------------------------
 
 
 df_interest <- df %>%
-  filter(Site_Name %in% c("TB-SW", "TB-UW2")) %>%
-  mutate(waterLevel = dly_mean_wtrlvl + 100) %>%
-  filter(waterLevel >= 97) %>%
+  #Select sites of interest
+  filter(Site_ID %in% c("TB-SW", "TB-UW2")) %>%
+  #Add 100 to waterlevel since dygraphs struggles with negative numbers
+  mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
   rename(Timestamp = Date) %>%
-  select(-dly_mean_wtrlvl)
+  select(-c(dly_mean_wtrlvl, Flag))
 
+#Pivot wider for dygraph's xts format
 df_interest <- pivot_wider(data = df_interest,
-                           names_from = c("Site_Name"),
+                           names_from = c("Site_ID"),
                            values_from = "waterLevel") %>%
   mutate(Timestamp = ymd(Timestamp))
 
+#Plot in dygraphs
 dygraph_ts_fun(df_interest)
 
 # 5.0 Xport! ------------------------------------------------------------------
 
+#Write aggregated daily data
 write_csv(df, paste0(data_dir,"dly_mean_output_JM_2019_2022.csv"))
 
 
