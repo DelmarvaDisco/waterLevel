@@ -15,6 +15,8 @@ remove(list = ls())
 
 library(dygraphs)
 library(xts)
+library(purrr)
+library(stringr)
 library(readxl)
 library(tidyverse)
 library(lubridate)
@@ -148,10 +150,8 @@ checks_interest <- checks2 %>%
           file == "data//checks_20201015_JM.csv")) %>%
   filter(!(Site_ID == "DK-UW1" & 
            file == "data//checks_20210525_JM.csv")) %>% 
-  filter(!(Site_ID %in% c("ND-UW1", "ND-UW2", "TA-SW", "MB-SW", "BD-SW") &
-           file == "data//checks_20211112_JM.csv")) %>% 
-  filter(Site_ID %in% c("MB-SW", "OB-SW", "HB-SW", "XB-SW", "TP-CH",
-                        "TS-SW", "DK-SW", "ND-SW"))
+  filter(!(Site_ID %in% c("ND-UW1", "ND-UW2", "TA-SW", "BD-SW") &
+           file == "data//checks_20211112_JM.csv"))
 
 #Plot differences between sensors and field measured values for checks. 
 checks_plot <- ggplot(data = checks_interest,
