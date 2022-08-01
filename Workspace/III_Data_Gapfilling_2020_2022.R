@@ -551,12 +551,87 @@ df <- bind_rows(temp, df)  %>%
 #Clean up the environment
 rm(model, temp, test_plot)
 
-# 4.9 OB-CH Fall 2021 ---------------------------------------------------------------------
+
+# 4.9 ND-UW3 Fall 2021 ----------------------------------------------------
+
+temp <- df %>% 
+  filter(Site_Name %in% c("ND-UW3", "ND-UW1", "ND-UW2", "ND-SW")) %>% 
+  #OB-CH not installed until 03-10, but other sites installed way longer
+  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
+  rename("gap" = `ND-UW3`,
+         "fill1" = `ND-UW1`,
+         "fill2" = `ND-UW2`,
+         "fill3" = `ND-SW`) 
+
+#Plot correlations
+# (ggplot(data = temp,
+#         mapping = aes(x = `gap`,
+#                       y = `fill3`)) +
+#     geom_point())
+
+#Make a model (linear)
+model <- lm(gap ~ `fill1` + `fill2` + `fill3`, data = temp)
+summary(model)
+
+#Apply model to df
+temp <- temp %>% 
+  mutate(prediction = predict(model, data.frame(fill1 = fill1, 
+                                                fill2 = fill2,
+                                                fill3 = fill3))) %>% 
+  #No delta value needed
+  mutate(prediction_delta = prediction - 0.00) %>% 
+  select(-c(fill1, fill2, fill3))
+
+#Compare modeled prediction to data 
+# test_plot <- ggplot(data = temp %>%
+#                            filter(Timestamp >= "2021-09-25 12:00:00" &
+#                                   Timestamp <= "2021-12-31 12:00:00"),
+#                     mapping = aes(x = Timestamp,
+#                                   y = gap)) +
+#              geom_line() +
+#              geom_line(aes(y = prediction),
+#                         size = 0.1,
+#                         color = "tomato")  +
+#              geom_line(aes(y = prediction_delta),
+#                         size = 0.1,
+#                         color = "blue")  +
+#              ylab("waterLevel (m)")
+# 
+# (test_plot)
+
+#Add predicted values to data and note flags accordingly
+temp <- temp %>% 
+  select(-prediction) %>% 
+  filter(Timestamp >= "2021-10-22 5:00:00" & Timestamp <= "2021-11-18 18:15:00") %>% 
+  mutate(waterLevel = if_else(is.na(gap),
+                              prediction_delta,
+                              gap),
+         Flag = if_else(is.na(gap),
+                        "1",
+                        Flag),
+         Notes = if_else(is.na(gap),
+                         "Filled with multiple linear regression from 3 sites (ND-SW, ND-UW1, ND-UW2) as corollaries r^2 = 0.9714. No delta value.",
+                         Notes),
+         Site_Name = "OB-CH") %>% 
+  select(-c(gap, prediction_delta)) 
+
+# Combine newly computed values to processed data
+df <- bind_rows(temp, df)  %>% 
+  distinct()
+
+#Clean up the environment
+rm(model, temp, test_plot)
+
+# 4.10 OB-CH Fall 2021 ---------------------------------------------------------------------
 
 temp <- df %>% 
   filter(Site_Name %in% c("OB-CH", "QB-UW2", "JB-UW2", "DF-SW", "TI-SW", "TP-CH")) %>% 
   #OB-CH not installed until 03-10, but other sites installed way longer
   filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #Need to remove some wonky duplicate values. 
+  filter(!Timestamp <= "2021-10-22 09:00:00" | Timestamp >= "2021-10-22 17:45:00") %>% 
+  filter(!Timestamp <= "2021-11-18 21:15:00" | Timestamp >= "2021-11-18 21:45:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `OB-CH`,
          "fill1" = `QB-UW2`,
@@ -625,8 +700,7 @@ df <- bind_rows(temp, df)  %>%
 #Clean up the environment
 rm(model, temp, test_plot)
 
-
-# 4.10 OB-SW Fall 2021 ----------------------------------------------------
+# 4.11 OB-SW Fall 2021 ----------------------------------------------------
 
 temp <- df %>% 
   filter(Site_Name %in% c("OB-SW", "JC-SW", "JA-SW", "TI-SW",
@@ -699,7 +773,7 @@ df <- bind_rows(temp, df)  %>%
 #Clean up the environment
 rm(model, temp, test_plot)
 
-# 4.11 OB-UW1 Fall 2021-------------------------------------------------------------
+# 4.12 OB-UW1 Fall 2021-------------------------------------------------------------
 
 temp <- df %>% 
   filter(Site_Name %in% c("OB-UW1", "QB-UW1", "JB-UW1", "QB-UW2", "QB-SW")) %>% 
@@ -772,7 +846,7 @@ df <- bind_rows(temp, df)  %>%
 rm(model, temp, test_plot)
 
 
-# 4.12 TB-SW Fall 2021 --------------------------------------------------------------------
+# 4.13 TB-SW Fall 2021 --------------------------------------------------------------------
 
 temp <- df %>% 
   #Filter the bad battery data, because it shouldn't be used for any analysis (Flag = 2)
@@ -847,7 +921,7 @@ df <- bind_rows(temp, df)  %>%
 rm(model, temp, test_plot)
 
 
-# 4.13 TB-UW2 Fall 2020 ------------------------------------------------------------------
+# 4.14 TB-UW2 Fall 2020 ------------------------------------------------------------------
 
 temp <- df %>% 
   filter(!Flag == "2") %>% 
@@ -912,7 +986,7 @@ df <- bind_rows(temp, df)  %>%
 rm(model, temp, test_plot)
 
 
-# 4.14 TS-CH Fall 2021 -------------------------------------------------------------------
+# 4.15 TS-CH Fall 2021 -------------------------------------------------------------------
 
 temp <- df %>% 
   filter(Site_Name %in% c("TS-CH", "TS-SW", "ND-UW2", "DK-UW1")) %>% 
@@ -983,7 +1057,7 @@ df <- bind_rows(temp, df)  %>%
 rm(model, temp, test_plot)
 
 
-# 4.15 TS-UW1 Fall 2021 ---------------------------------------------------
+# 4.16 TS-UW1 Fall 2021 ---------------------------------------------------
 
 temp <- df %>% 
   filter(Site_Name %in% c("TS-UW1", "TS-SW", "ND-UW1", "DK-UW2")) %>% 
@@ -1054,7 +1128,7 @@ df <- bind_rows(temp, df)  %>%
 rm(model, temp, test_plot)
 
 
-# 4.16 XB-SW Fall 2021 ----------------------------------------------------------------
+# 4.17 XB-SW Fall 2021 ----------------------------------------------------------------
 
 temp <- df %>%
   filter(Site_Name %in% c("XB-SW", "QB-SW", "JA-SW", "TI-SW",
@@ -1131,7 +1205,7 @@ df <- bind_rows(temp, df)  %>%
 #Clean up the environment
 rm(model, temp, test_plot)
 
-# 4.17 XB-UW1 Fall 2021 ----------------------------------------------------------------------
+# 4.18 XB-UW1 Fall 2021 ----------------------------------------------------------------------
 
 temp <- df %>%
   filter(Site_Name %in% c("XB-UW1", "JB-UW1", "QB-UW1", "QB-UW2", 
