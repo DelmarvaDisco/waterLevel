@@ -179,7 +179,7 @@ rm(checks1, checks2, checks_plot)
 
 df_interest <- df %>%
   #Select sites of interest
-  filter(Site_ID %in% c("TB-SW", "TB-UW2")) %>%
+  filter(Site_ID %in% c("HB-SW", "HB-CH", "MB-CH")) %>%
   #Add 100 to waterlevel since dygraphs struggles with negative numbers
   mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
   rename(Timestamp = Date) %>%

@@ -2763,15 +2763,18 @@ temp <- df %>%
 #remove anomalous values
 temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 
+#More filtering
+temp <- temp %>% 
+  filter(Timestamp <= "2021-08-03 6:00:00")
 
 #plot in dygraphs
-# temp2 <- dt %>% 
-#   filter(Site_Name == site)
-# 
-# temp_dy <- rbind(temp, temp2) %>% 
-#   mutate(waterLevel = waterLevel + 100)
-# 
-# dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
+temp2 <- dt %>%
+  filter(Site_Name == site)
+
+temp_dy <- rbind(temp, temp2) %>%
+  mutate(waterLevel = waterLevel + 100)
+
+dygraph_ts_fun(temp_dy %>% select(Timestamp, waterLevel))
 
 #Extract the last measured water level to check against field sheet
 check <- temp %>%  

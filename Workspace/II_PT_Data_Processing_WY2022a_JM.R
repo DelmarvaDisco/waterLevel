@@ -75,9 +75,9 @@ field_logs <- field_logs %>%
   mutate(Relative_water_level_m = as.numeric(Relative_water_level_m))
 
 #Check to make sure pt files match field logs
-check_fun(pt_files, field_logs)
-
-rm(check_fun_errors)
+# check_fun(pt_files, field_logs)
+# 
+# rm(check_fun_errors)
 
 #Join field log to master df. First, make Sonde_ID a character in both objects. 
 df$Sonde_ID <- as.character(df$Sonde_ID)
