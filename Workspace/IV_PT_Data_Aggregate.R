@@ -6,7 +6,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Notes and issues:
-# - How to keep a Notes column after aggregating to daily time step??
+# - How to keep a Notes column after aggregating to daily time step?
 
 # 1.0 Libraries and work space ----------------------------------------------
 
