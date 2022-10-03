@@ -974,51 +974,51 @@ rm(chk, temp)
 # rm(chk, temp)
 
 # 3.38 Jones Road South Catchment Outlet -------------------------------------------------------------------
-
-chk <- df %>% 
-  filter(Site_Name %in%  c("Jones Road South Catchment Outlet")) %>% 
-  mutate(waterLevel = waterLevel + 100) %>% 
-  select(-c(Flag, Notes)) 
-
-dygraph_ts_fun(chk)
-
-#!!! Lower bound at -0.3 !!!
-#Add lower bound to sites list
-sites_lowerbound <- sites_lowerbound %>% 
-  mutate(lower_bound = if_else(Site_Name == "Jones Road South Catchment Outlet",
-                               "-0.3",
-                               lower_bound))
-
-#Modify the data using the lower bound
-temp <- df %>% 
-  filter(Site_Name == "Jones Road South Catchment Outlet") %>% 
-  mutate(#Rewrite Flag column
-    Flag = ifelse(waterLevel <= -0, 
-                  "2",
-                  Flag),
-    #Rewrite Notes column
-    Notes = ifelse(waterLevel <= -0,
-                   "Well dry, no data",
-                   Notes),
-    #Rewrite waterLevel colum
-    waterLevel = ifelse(waterLevel <= -0,
-                        "NA",
-                        waterLevel)) %>% 
-  #Reformat waterLevel and Flag columns
-  mutate(waterLevel = as.numeric(waterLevel), 
-         Flag = as.numeric(Flag))
-
-#Combine temp and df replacing the incorrect data in df. 
-
-df <- df %>% 
-  #Get rid of incorrect site data
-  filter(!Site_Name == "Jones Road Sounh Catchment Outlet")
-
-#Add modified/corrected site data to df
-df <- bind_rows(df, temp)
-
-#Clean up environment
-rm(chk, temp)
+# 
+# chk <- df %>% 
+#   filter(Site_Name %in%  c("Jones Road South Catchment Outlet")) %>% 
+#   mutate(waterLevel = waterLevel + 100) %>% 
+#   select(-c(Flag, Notes)) 
+# 
+# dygraph_ts_fun(chk)
+# 
+# #!!! Lower bound at -0.3 !!!
+# #Add lower bound to sites list
+# sites_lowerbound <- sites_lowerbound %>% 
+#   mutate(lower_bound = if_else(Site_Name == "Jones Road South Catchment Outlet",
+#                                "-0.3",
+#                                lower_bound))
+# 
+# #Modify the data using the lower bound
+# temp <- df %>% 
+#   filter(Site_Name == "Jones Road South Catchment Outlet") %>% 
+#   mutate(#Rewrite Flag column
+#     Flag = ifelse(waterLevel <= -0, 
+#                   "2",
+#                   Flag),
+#     #Rewrite Notes column
+#     Notes = ifelse(waterLevel <= -0,
+#                    "Well dry, no data",
+#                    Notes),
+#     #Rewrite waterLevel colum
+#     waterLevel = ifelse(waterLevel <= -0,
+#                         "NA",
+#                         waterLevel)) %>% 
+#   #Reformat waterLevel and Flag columns
+#   mutate(waterLevel = as.numeric(waterLevel), 
+#          Flag = as.numeric(Flag))
+# 
+# #Combine temp and df replacing the incorrect data in df. 
+# 
+# df <- df %>% 
+#   #Get rid of incorrect site data
+#   filter(!Site_Name == "Jones Road Sounh Catchment Outlet")
+# 
+# #Add modified/corrected site data to df
+# df <- bind_rows(df, temp)
+# 
+# #Clean up environment
+# rm(chk, temp)
 
 
 # Scatch ------------------------------------------------------------------
