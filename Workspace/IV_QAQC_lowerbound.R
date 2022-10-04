@@ -7,7 +7,9 @@
 
 # Notes:
 # !!! Jones Rd Catchment Outlet North moves 
-# 5 cm lower between Summer 2021 and Summmer 2022
+# 5 cm lower between Summer 2021 and Summer 2022
+# !!! Tiger Paw Catchment Outlet moves 
+# 8 cm lower between Summer 2021 and Summer 2022
 
 
 # 1. Libraries and packages -----------------------------------------------
@@ -193,7 +195,6 @@ df <- bind_rows(df, temp)
 #Clean up environment 
 rm(chk, temp)
 
-
 # 3.8 HB-SW --------------------------------------------------------------------
 
 chk <- df %>% 
@@ -206,7 +207,6 @@ dygraph_ts_fun(chk)
 #!!! No lower bound
 
 rm(chk)
-
 
 # 3.9 HB-UW1 --------------------------------------------------------------
 
@@ -359,7 +359,6 @@ rm(chk)
 
 # 3.15 ND-UW2 ------------------------------------------------------------------
 
-
 chk <- df %>% 
   filter(Site_Name %in%  c("ND-UW2")) %>% 
   mutate(waterLevel = waterLevel + 100) %>% 
@@ -368,7 +367,6 @@ chk <- df %>%
 dygraph_ts_fun(chk)
 
 #!!! No lower bound
-
 rm(chk)
 
 # 3.16 ND-UW3 --------------------------------------------------------------------
@@ -383,7 +381,6 @@ dygraph_ts_fun(chk)
 #!!! No lower bound
 
 rm(chk)
-
 
 # 3.17 OB-CH -------------------------------------------------------------------
 
@@ -442,7 +439,6 @@ chk <- df %>%
   select(-c(Flag, Notes)) 
 
 dygraph_ts_fun(chk)
-
 
 # 3.19 OB-UW1 -------------------------------------------------------------
 
@@ -615,7 +611,6 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-
 # 3.25 XB-SW --------------------------------------------------------------
 
 chk <- df %>% 
@@ -624,7 +619,6 @@ chk <- df %>%
   select(-c(Flag, Notes)) 
 
 dygraph_ts_fun(chk)
-
 
 # 3.26 XB-UW1 -------------------------------------------------------------
 
@@ -674,7 +668,6 @@ df <- bind_rows(df, temp)
 #Clean up environment
 rm(chk, temp)
 
-
 # 3.27 DB-SW --------------------------------------------------------------------
 
 chk <- df %>% 
@@ -683,7 +676,6 @@ chk <- df %>%
   select(-c(Flag, Notes)) 
 
 dygraph_ts_fun(chk)
-
 
 # 3.28 DB-UW1 --------------------------------------------------------------------
 
@@ -694,8 +686,7 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#Possible lower bound at ~ -1.55 meters. See more data. 
-
+#Possible lower bound at ~ -1.55 meters. See more data before adding another QAQC step. 
 
 # 3.29 DF-SW --------------------------------------------------------------------
 
@@ -773,6 +764,7 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
+#Possible lower bound at -0.24 meters. Need to see more data before deciding on QAQC
 
 # 3.33 JB-UW1 --------------------------------------------------------------
 
@@ -928,120 +920,358 @@ rm(chk, temp)
 
 # 3.37 Jones Road North Catchment Outlet --------------------------------------------------------------------
 
-# chk <- df %>% 
-#   filter(Site_Name %in%  c("Jones Road North Catchment Outlet")) %>% 
-#   mutate(waterLevel = waterLevel + 100) %>% 
-#   select(-c(Flag, Notes)) 
-# 
-# dygraph_ts_fun(chk)
-# 
-# #!!! Lower bound at -1.41 !!!
-# #Add lower bound to sites list
-# sites_lowerbound <- sites_lowerbound %>% 
-#   mutate(lower_bound = if_else(Site_Name == "Jones Road North Catchment Outlet",
-#                                "-",
-#                                lower_bound))
-# 
-# #Modify the data using the lower bound
-# temp <- df %>% 
-#   filter(Site_Name == "Jones Road North Catchment Outlet") %>% 
-#   mutate(#Rewrite Flag column
-#     Flag = ifelse(waterLevel <= -, 
-#                   "2",
-#                   Flag),
-#     #Rewrite Notes column
-#     Notes = ifelse(waterLevel <= -,
-#                    "Well dry, no data",
-#                    Notes),
-#     #Rewrite waterLevel colum
-#     waterLevel = ifelse(waterLevel <= -,
-#                         "NA",
-#                         waterLevel)) %>% 
-#   #Reformat waterLevel and Flag columns
-#   mutate(waterLevel = as.numeric(waterLevel), 
-#          Flag = as.numeric(Flag))
-# 
-# #Combine temp and df replacing the incorrect data in df. 
-# 
-# df <- df %>% 
-#   #Get rid of incorrect site data
-#   filter(!Site_Name == "Jones Road North Catchment Outlet")
-# 
-# #Add modified/corrected site data to df
-# df <- bind_rows(df, temp)
-# 
-# #Clean up environment
-# rm(chk, temp)
+chk <- df %>%
+  filter(Site_Name %in%  c("Jones Road North Catchment Outlet")) %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(-c(Flag, Notes))
+
+dygraph_ts_fun(chk)
+
+#!!! Lower bound at -0.17 meters !!!
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "Jones Road North Catchment Outlet",
+                               "-0.17",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "Jones Road North Catchment Outlet") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.17,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.17,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -0.17,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "Jones Road North Catchment Outlet")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
 
 # 3.38 Jones Road South Catchment Outlet -------------------------------------------------------------------
-# 
-# chk <- df %>% 
-#   filter(Site_Name %in%  c("Jones Road South Catchment Outlet")) %>% 
-#   mutate(waterLevel = waterLevel + 100) %>% 
-#   select(-c(Flag, Notes)) 
-# 
-# dygraph_ts_fun(chk)
-# 
-# #!!! Lower bound at -0.3 !!!
-# #Add lower bound to sites list
-# sites_lowerbound <- sites_lowerbound %>% 
-#   mutate(lower_bound = if_else(Site_Name == "Jones Road South Catchment Outlet",
-#                                "-0.3",
-#                                lower_bound))
-# 
-# #Modify the data using the lower bound
-# temp <- df %>% 
-#   filter(Site_Name == "Jones Road South Catchment Outlet") %>% 
-#   mutate(#Rewrite Flag column
-#     Flag = ifelse(waterLevel <= -0, 
-#                   "2",
-#                   Flag),
-#     #Rewrite Notes column
-#     Notes = ifelse(waterLevel <= -0,
-#                    "Well dry, no data",
-#                    Notes),
-#     #Rewrite waterLevel colum
-#     waterLevel = ifelse(waterLevel <= -0,
-#                         "NA",
-#                         waterLevel)) %>% 
-#   #Reformat waterLevel and Flag columns
-#   mutate(waterLevel = as.numeric(waterLevel), 
-#          Flag = as.numeric(Flag))
-# 
-# #Combine temp and df replacing the incorrect data in df. 
-# 
-# df <- df %>% 
-#   #Get rid of incorrect site data
-#   filter(!Site_Name == "Jones Road Sounh Catchment Outlet")
-# 
-# #Add modified/corrected site data to df
-# df <- bind_rows(df, temp)
-# 
-# #Clean up environment
-# rm(chk, temp)
 
+chk <- df %>%
+  filter(Site_Name %in%  c("Jones Road South Catchment Outlet")) %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(-c(Flag, Notes))
 
-# Scatch ------------------------------------------------------------------
+dygraph_ts_fun(chk)
 
+#!!! Lower bound at -0.41 !!!
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "Jones Road South Catchment Outlet",
+                               "-0.41",
+                               lower_bound))
 
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "Jones Road South Catchment Outlet") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.41,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.41,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -0.41,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
 
+#Combine temp and df replacing the incorrect data in df.
 
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "Jones Road South Catchment Outlet")
 
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
 
+#Clean up environment
+rm(chk, temp)
 
+# 3.38 NB-SW --------------------------------------------------------------
 
+chk <- df %>%
+  filter(Site_Name %in%  c("NB-SW")) %>%
+  mutate(waterLevel = waterLevel + 100) %>%
+  select(-c(Flag, Notes))
 
+dygraph_ts_fun(chk)
 
+#!!! Lower bound at 0.02 m !!!
 
-temp <- pivot_wider(data = temp,
-            names_from = c("Site_Name"),
-            values_from = "waterLevel") 
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "NB-SW",
+                               "0.02",
+                               lower_bound))
 
-str(temp)
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "NB-SW") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= 0.02,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= 0.02,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= 0.02,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
 
-hmm <- df %>% filter(Site_Name %in% c("DK-CH",))
+#Combine temp and df replacing the incorrect data in df.
 
-rm(hmm)
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "NB-SW")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
+# 3.39 QB-SW --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("QB-SW")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# 3.40 QB-UW1 --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("QB-UW1")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# !!!! Lower bound at -1.38 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "QB-UW1",
+                               "-1.38",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "QB-UW1") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.38,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.38,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -1.38,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "QB-UW1")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
+# 3.41 QB-UW2 --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("QB-UW2")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# 3.42 TA-SW --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("TA-SW")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# 3.43 TB-SW -------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("TB-SW")) %>% 
+  filter(! Flag == "2") %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# 3.44 TB-UW1 --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("TB-UW1")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# !!!! Lower bound at -1.49 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "TB-UW1",
+                               "-1.49",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "TB-UW1") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.49,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.49,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -1.49,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "TB-UW1")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
+# 3.45 TB-UW2 ------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("TB-UW2")) %>% 
+  filter(!Flag == "2") %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# 3.46 TB-UW3 --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("TB-UW3")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# 3.47 TI-SW --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("TI-SW")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# 3.48 Tiger Paw Catchment Outlet --------------------------------------------------------------------
+
+chk <- df %>% 
+  filter(Site_Name %in%  c("Tiger Paw Catchment Outlet")) %>% 
+  mutate(waterLevel = waterLevel + 100) %>% 
+  select(-c(Flag, Notes)) 
+
+dygraph_ts_fun(chk)
+
+# !!!! Lower bound at -0.42 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "Tiger Paw Catchment Outlet",
+                               "-0.42",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "Tiger Paw Catchment Outlet") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.42,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.42,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -0.42,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "Tiger Paw Catchment Outlet")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
+# 4.0 Write new file ------------------------------------------------------
+
+write_csv(df, file = paste0(data_dir, "output_JM_2019_2022.csv"))
 
 
 

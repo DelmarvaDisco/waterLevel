@@ -15,11 +15,8 @@ remove(list = ls())
 
 library(dygraphs)
 library(xts)
-library(purrr)
-library(stringr)
 library(readxl)
 library(tidyverse)
-library(lubridate)
 
 #Functions
 source("functions//dygraph_ts_fun.R")
