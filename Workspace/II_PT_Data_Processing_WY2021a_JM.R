@@ -11,7 +11,6 @@
 #    The column name was weird ("Abs Pres, kPa (LGR S/N: 10258771, SEN S/N: 10258771, LBL: PSI)")
 #    Since the SN had "LBL : PSI "after it, download_fun broke. Manually assigned SN to the site
 #    in Step #2
-#  - A little extra filtering for QB-UW1, QB-UW2
 
 #Steps
 # Step 1: Organize workspace

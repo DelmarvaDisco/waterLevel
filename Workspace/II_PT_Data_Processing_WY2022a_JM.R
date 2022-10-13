@@ -2398,7 +2398,7 @@ temp <- fun_anomalous(temp, min = -0.05, max = 0.2)
 #More filtering 
 temp <- temp %>% 
   filter(Timestamp <= "2022-02-23 16:00:00" | Timestamp >= "2022-02-23 20:00:00") %>% 
-  filter(Timestamp <= "2022-04-01 16:00:00" | Timestamp >= "2022-02-23 20:00:00")
+  filter(Timestamp <= "2022-04-01 12:00:00" | Timestamp >= "2022-04-01 20:00:00")
 
 #plot in dygraphs
 temp2 <- dt %>% 
