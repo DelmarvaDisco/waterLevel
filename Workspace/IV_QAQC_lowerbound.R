@@ -44,9 +44,43 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#!!! Well deep enough no lower bound.
+#!!! Lower bound at -1.545 m !!!
 
-rm(chk)
+#Add lower bound to site's lowerbound table
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "BD-CH",
+                               "-1.545",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "BD-CH") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.545, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.545,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel column
+    waterLevel = ifelse(waterLevel <= -1.545,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+#Get rid of incorrect site data
+df <- df %>% 
+  filter(!Site_Name == "BD-CH")
+
+#Add modified/correct site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment 
+rm(chk, temp)
 
 # 3.2 BD-SW -------------------------------------------------------------------
 
@@ -57,9 +91,44 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#!!! Might have lower bound at -0.35m. Check with more data. 
+#!!! Lower bound at -0.32m !!!
 
-rm(chk)
+#Add lower bound to site's lowerbound table
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "BD-SW",
+                               "-0.32",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "BD-SW") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.32, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.32,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel column
+    waterLevel = ifelse(waterLevel <= -0.32,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+#Get rid of incorrect site data
+df <- df %>% 
+  filter(!Site_Name == "BD-SW")
+
+#Add modified/correct site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment 
+rm(chk, temp)
+
 
 # 3.3 DK-CH --------------------------------------------------------------------
 
@@ -143,9 +212,44 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#!!! No lower bound
+#!!! Lower bound at -1.48 m !!!
 
-rm(chk)
+#Add lower bound to site's lowerbound table
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "DK-UW2",
+                               "-1.48",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "DK-UW2") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.48, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.48,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel column
+    waterLevel = ifelse(waterLevel <= -1.48,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+#Get rid of incorrect site data
+df <- df %>% 
+  filter(!Site_Name == "DK-UW2")
+
+#Add modified/correct site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment 
+rm(chk, temp)
+
 
 # 3.7 HB-CH  --------------------------------------------------------------------
 
@@ -353,9 +457,44 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#!!! No lower bound
+#!!! Lower bound at -1.85 m!!!
 
-rm(chk)
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "ND-UW1",
+                               "-1.85",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "ND-UW1") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.85, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.85,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -1.85,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+
+df <- df %>% 
+  #Get rid of incorrect site data
+  filter(!Site_Name == "ND-UW1")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment 
+rm(chk, temp)
 
 # 3.15 ND-UW2 ------------------------------------------------------------------
 
@@ -366,8 +505,44 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#!!! No lower bound
-rm(chk)
+#!!! Lower bound at -1.61 m!!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "ND-UW2",
+                               "-1.61",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "ND-UW2") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.61, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.61,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -1.61,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+
+df <- df %>% 
+  #Get rid of incorrect site data
+  filter(!Site_Name == "ND-UW2")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment 
+rm(chk, temp)
 
 # 3.16 ND-UW3 --------------------------------------------------------------------
 
@@ -545,6 +720,8 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
+#Might be lower bound, need more data
+
 # 3.22 TS-SW  -------------------------------------------------------------------
 
 chk <- df %>% 
@@ -553,6 +730,45 @@ chk <- df %>%
   select(-c(Flag, Notes)) 
 
 dygraph_ts_fun(chk)
+
+#!!! Lower bound at -0.36 m!!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "TS-SW",
+                               "-0.36",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "TS-SW") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.36, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.36,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -0.36,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+
+df <- df %>% 
+  #Get rid of incorrect site data
+  filter(!Site_Name == "TS-SW")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment 
+rm(chk, temp)
 
 # 3.23 TS-UW1 -------------------------------------------------------------
 
@@ -610,6 +826,46 @@ chk <- df %>%
   select(-c(Flag, Notes)) 
 
 dygraph_ts_fun(chk)
+
+#Lower bound at -0.935 m
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "XB-CH",
+                               "-0.935",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "XB-CH") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.935, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.935,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -0.935,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+
+df <- df %>% 
+  #Get rid of incorrect site data
+  filter(!Site_Name == "XB-CH")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
 
 # 3.25 XB-SW --------------------------------------------------------------
 
@@ -686,7 +942,44 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#Possible lower bound at ~ -1.55 meters. See more data before adding another QAQC step. 
+#!!!Lower bound at -1.48 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "DB-UW1",
+                               "-1.48",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "DB-UW1") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.48, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.48,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -1.38,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+
+df <- df %>% 
+  #Get rid of incorrect site data
+  filter(!Site_Name == "DB-UW1")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
 
 # 3.29 DF-SW --------------------------------------------------------------------
 
@@ -715,7 +1008,7 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#Lower bound at -0.18 meters
+#!!!Lower bound at -0.18 meters !!!
 
 #Add lower bound to sites list
 sites_lowerbound <- sites_lowerbound %>% 
@@ -754,7 +1047,6 @@ df <- bind_rows(df, temp)
 #Clean up environment
 rm(chk, temp)
 
-
 # 3.32 JB-SW --------------------------------------------------------------
 
 chk <- df %>% 
@@ -764,7 +1056,44 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
-#Possible lower bound at -0.24 meters. Need to see more data before deciding on QAQC
+#!!!Lower bound at -0.24 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>% 
+  mutate(lower_bound = if_else(Site_Name == "JB-SW",
+                               "-0.23",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>% 
+  filter(Site_Name == "JB-SW") %>% 
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.23, 
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.23,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -0.23,
+                        "NA",
+                        waterLevel)) %>% 
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel), 
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df. 
+
+df <- df %>% 
+  #Get rid of incorrect site data
+  filter(!Site_Name == "JB-SW")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
 
 # 3.33 JB-UW1 --------------------------------------------------------------
 
@@ -1069,6 +1398,46 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
+#!!! Well filled with sediment creating a lower bound at -0.15 m from 8/20/2022 until 10/4/2022 !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "QB-SW",
+                               "-0.15 from 8/20/2022 until 10/4/2022",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "QB-SW") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse((waterLevel <= -0.15 & Timestamp <= "2022-10-04 12:00:00" & Timestamp >= "2022-08-20 12:00:00"),
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse((waterLevel <= -0.15 & Timestamp <= "2022-10-04 12:00:00" & Timestamp >= "2022-08-20 12:00:00"),
+                   "Sediment lifted PT site dry.",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse((waterLevel <= -0.15 & Timestamp <= "2022-10-04 12:00:00" & Timestamp >= "2022-08-20 12:00:00"),
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "QB-SW")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
+
 # 3.40 QB-UW1 --------------------------------------------------------------------
 
 chk <- df %>% 
@@ -1135,6 +1504,45 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
+# !!!! Lower bound at -0.28 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "TA-SW",
+                               "-0.28",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "TA-SW") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -0.28,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -0.28,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -0.28,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "TA-SW")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
 # 3.43 TB-SW -------------------------------------------------------------------
 
 chk <- df %>% 
@@ -1144,6 +1552,45 @@ chk <- df %>%
   select(-c(Flag, Notes)) 
 
 dygraph_ts_fun(chk)
+
+# !!!! Lower bound at 0.02 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "TB-SW",
+                               "0.03",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "TB-SW") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= 0.03,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= 0.03,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= 0.03,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "TB-SW")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
 
 # 3.44 TB-UW1 --------------------------------------------------------------------
 
@@ -1203,6 +1650,45 @@ chk <- df %>%
 
 dygraph_ts_fun(chk)
 
+# !!!! Lower bound at -1.48 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "TB-UW2",
+                               "-1.48",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "TB-UW2") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.48,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.48,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -1.48,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "TB-UW2")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
+
 # 3.46 TB-UW3 --------------------------------------------------------------------
 
 chk <- df %>% 
@@ -1211,6 +1697,45 @@ chk <- df %>%
   select(-c(Flag, Notes)) 
 
 dygraph_ts_fun(chk)
+
+# !!!! Lower bound at -1.62 meters !!!
+
+#Add lower bound to sites list
+sites_lowerbound <- sites_lowerbound %>%
+  mutate(lower_bound = if_else(Site_Name == "TB-UW3",
+                               "-1.62",
+                               lower_bound))
+
+#Modify the data using the lower bound
+temp <- df %>%
+  filter(Site_Name == "TB-UW3") %>%
+  mutate(#Rewrite Flag column
+    Flag = ifelse(waterLevel <= -1.62,
+                  "2",
+                  Flag),
+    #Rewrite Notes column
+    Notes = ifelse(waterLevel <= -1.62,
+                   "Well dry, no data",
+                   Notes),
+    #Rewrite waterLevel colum
+    waterLevel = ifelse(waterLevel <= -1.62,
+                        "NA",
+                        waterLevel)) %>%
+  #Reformat waterLevel and Flag columns
+  mutate(waterLevel = as.numeric(waterLevel),
+         Flag = as.numeric(Flag))
+
+#Combine temp and df replacing the incorrect data in df.
+
+df <- df %>%
+  #Get rid of incorrect site data
+  filter(!Site_Name == "TB-UW3")
+
+#Add modified/corrected site data to df
+df <- bind_rows(df, temp)
+
+#Clean up environment
+rm(chk, temp)
 
 # 3.47 TI-SW --------------------------------------------------------------------
 
