@@ -62,17 +62,18 @@ Sites <- unique(df$Site_Name) %>%
 
 temp <- df %>% 
   filter(Site_Name %in% c("BD-CH", "BD-SW")) %>% 
-  #BD_CH not installed until 03-02
-  filter(Timestamp >= "2021-03-02 2:00:00") %>% 
+  #BD_CH not installed until 03-02, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-02 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `BD-CH`,
          "fill" = `BD-SW`)
 
 #Plot correlation
-# (ggplot(data = temp,
-#         mapping = aes(x = `gap`,
-#                       y = `fill`)) +
-#   geom_point())
+(ggplot(data = temp,
+        mapping = aes(x = `gap`,
+                      y = `fill`)) +
+  geom_point())
 
 #Make a model (linear)
 model <- lm(`gap` ~ `fill`, data = temp)
@@ -83,18 +84,18 @@ temp <- temp %>%
   mutate(prediction = predict(model, data.frame(fill = fill)))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp, #%>%
-#                            # filter(Timestamp >= "2021-09-25 12:00:00" &
-#                            #        Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_point(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato") +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp, #%>%
+                           # filter(Timestamp >= "2021-09-25 12:00:00" &
+                           #        Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_point(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato") +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -123,8 +124,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("DK-CH", "DK-UW2")) %>% 
-  #DK_CH not installed until 03-02, but DK-UW2 installed way longer
-  filter(Timestamp >= "2021-03-02 2:00:00") %>% 
+  #DK_CH not installed until 03-02, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-02 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `DK-CH`,
          "fill" = `DK-UW2`)
@@ -139,24 +141,22 @@ temp <- temp %>%
   mutate(prediction = predict(model, data.frame(fill = fill)))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-08-25 12:00:00" &
-#                                   Timestamp <= "2022-01-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_point(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-08-25 12:00:00" &
+                                  Timestamp <= "2022-01-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_point(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
   filter(Timestamp >= "2021-10-14 13:15:00" & Timestamp <= "2021-11-03 18:15:00") %>% 
-  #Modeled data over-estimates highest water values
-  filter(prediction <= .17) %>% 
   mutate(waterLevel = if_else(is.na(gap),
                               prediction,
                               gap),
@@ -182,8 +182,9 @@ rm(model, temp, test_plot)
 temp <- df %>%
   filter(Site_Name %in% c("HB-CH", "QB-SW", "TI-SW", "QB-UW2",
                           "JA-SW", "TP-CH", "NB-SW")) %>%
-  #HB-SW not installed until 2021-03-10
-  filter(Timestamp >= "2021-03-10 21:30:00") %>%
+  #HB-CH not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>%
   rename("gap" = `HB-CH`,
          "fill1" = `QB-SW`,
@@ -246,7 +247,7 @@ temp <- temp %>%
                         "1",
                         Flag),
          Notes = if_else(is.na(gap),
-                         "Used multiple linear regression 6 nearby sites (QB-SW, TI-SW, QB-UW2, JA-SW, TP-CH, NB-SW) r^ = 0.958. Added +0.04m delta",
+                         "Used multiple linear regression 6 nearby sites (QB-SW, TI-SW, QB-UW2, JA-SW, TP-CH, NB-SW) r^ = 0.9716. Added +0.04m delta",
                          Notes),
          Site_Name = "HB-CH") %>%
   select(-c(gap, prediction_delta))
@@ -264,8 +265,9 @@ rm(model, temp, test_plot)
 temp <- df %>%
   filter(Site_Name %in% c("HB-SW", "QB-SW", "TI-SW", 
                           "JB-SW", "JC-SW", "DF-SW")) %>%
-  #HB-SW not installed until 2021-03-10
-  filter(Timestamp >= "2021-03-10 21:30:00") %>%
+  #HB-SW not installed until 3-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>%
   rename("gap" = `HB-SW`,
          "fill1" = `QB-SW`,
@@ -281,7 +283,7 @@ temp <- df %>%
 #     geom_point())
 
 #Make a model (linear)
-model <- lm(`gap` ~ `fill1`+`fill2`+`fill3`+`fill4`+`fill5`, data = temp)
+model <- lm(`gap` ~ `fill1` + `fill2` + `fill3` + `fill4` + `fill5`, data = temp)
 summary(model)
 
 #Apply model to df
@@ -295,21 +297,21 @@ temp <- temp %>%
   mutate(prediction_delta = prediction + 0.06)
 
 #Compare modeled prediction to data
-# test_plot <- ggplot(data = temp %>%
-#                     filter(Timestamp >= "2021-10-10 12:00:00" &
-#                            Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#   geom_line(size = 0.2) +
-#   geom_line(aes(y = prediction),
-#              size = 0.05,
-#              color = "tomato") +
-#   geom_line(aes(y = prediction_delta),
-#              size = 0.05,
-#              color = "blue") +
-#   ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                    filter(Timestamp >= "2021-10-10 12:00:00" &
+                           Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+  geom_line(size = 0.2) +
+  geom_line(aes(y = prediction),
+             size = 0.05,
+             color = "tomato") +
+  geom_line(aes(y = prediction_delta),
+             size = 0.05,
+             color = "blue") +
+  ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>%
@@ -341,8 +343,9 @@ rm(model, temp, test_plot)
 temp <- df %>% 
   filter(Site_Name %in% c("HB-UW1", "QB-UW2", "QB-UW1", 
                           "JB-UW1", "JB-UW2")) %>% 
-  #HB-UW1 not installed until 2021-03-10
-  filter(Timestamp >= "2021-03-10 21:30:00") %>% 
+  #HB-UW1 not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `HB-UW1`,
          "fill1" = `QB-UW2`,
@@ -371,21 +374,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                       filter(Timestamp >= "2021-10-10 12:00:00" &
-#                              Timestamp <= "2021-12-11 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_point(aes(y = prediction),
-#                         size = 0.01,
-#                         color = "tomato") +
-#              geom_point(aes(y = prediction_delta),
-#                         size = 0.01,
-#                         color = "blue") +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                      filter(Timestamp >= "2021-10-10 12:00:00" &
+                             Timestamp <= "2021-12-11 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_point(aes(y = prediction),
+                        size = 0.01,
+                        color = "tomato") +
+             geom_point(aes(y = prediction_delta),
+                        size = 0.01,
+                        color = "blue") +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -417,8 +420,9 @@ rm(model, temp, test_plot)
 temp <- df %>% 
   filter(Site_Name %in% c("MB-CH", "QB-UW1", "TP-CH", "DF-SW",
                           "Jones Road North Catchment Outlet", "TI-SW")) %>% 
-  #MB_CH not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #MB-CH not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `MB-CH`,
          "fill1" = `QB-UW1`,
@@ -448,21 +452,22 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4, fill5))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp, #%>%
-#                            # filter(Timestamp >= "2021-08-25 12:00:00" &
-#                            #        Timestamp <= "2022-01-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+
+test_plot <- ggplot(data = temp %>%
+                      filter(Timestamp >= "2021-10-10 12:00:00" &
+                               Timestamp <= "2021-12-11 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+  geom_line() +
+  geom_point(aes(y = prediction),
+             size = 0.01,
+             color = "tomato") +
+  geom_point(aes(y = prediction_delta),
+             size = 0.01,
+             color = "blue") +
+  ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -491,8 +496,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("MB-SW", "QB-SW", "DF-SW", "TI-SW", "JB-SW")) %>% 
-  #MB_SW not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #MB-SW not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `MB-SW`,
          "fill1" = `QB-SW`,
@@ -520,21 +526,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-08-25 12:00:00" &
-#                                   Timestamp <= "2022-01-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-08-25 12:00:00" &
+                                  Timestamp <= "2022-01-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -563,8 +569,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("MB-UW1", "QB-UW1", "JB-UW2", "JC-UW1")) %>% 
-  #MB_UW1 not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #MB-UW1 not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `MB-UW1`,
          "fill1" = `QB-UW1`,
@@ -589,21 +596,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-9-20 12:00:00" &
-#                                   Timestamp <= "2021-11-29 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              # geom_line(aes(y = prediction_delta),
-#              #            size = 0.1,
-#              #            color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-9-20 12:00:00" &
+                                  Timestamp <= "2021-11-29 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             # geom_line(aes(y = prediction_delta),
+             #            size = 0.1,
+             #            color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -632,8 +639,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("ND-UW3", "ND-UW1", "ND-UW2", "ND-SW")) %>% 
-  #OB-CH not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #ND-UW3 not installed until 03-02, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-02 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `ND-UW3`,
          "fill1" = `ND-UW1`,
@@ -643,7 +651,7 @@ temp <- df %>%
 #Plot correlations
 # (ggplot(data = temp,
 #         mapping = aes(x = `gap`,
-#                       y = `fill3`)) +
+#                       y = `fill1`)) +
 #     geom_point())
 
 #Make a model (linear)
@@ -660,21 +668,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-09-25 12:00:00" &
-#                                   Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-09-25 12:00:00" &
+                                  Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -703,8 +711,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("OB-CH", "QB-UW2", "JB-UW2", "DF-SW", "TI-SW", "TP-CH")) %>% 
-  #OB-CH not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #OB-CH not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `OB-CH`,
          "fill1" = `QB-UW2`,
@@ -734,21 +743,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4, fill5))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-09-25 12:00:00" &
-#                                   Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-09-25 12:00:00" &
+                                  Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -778,8 +787,9 @@ rm(model, temp, test_plot)
 temp <- df %>% 
   filter(Site_Name %in% c("OB-SW", "JC-SW", "JA-SW", "TI-SW",
                           "DF-SW")) %>% 
-  #OB-SW not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #OB-SW not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-10-02 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `OB-SW`,
          "fill1" = `JC-SW`,
@@ -807,21 +817,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-09-25 12:00:00" &
-#                                   Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-09-25 12:00:00" &
+                                  Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -850,8 +860,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("OB-UW1", "QB-UW1", "JB-UW1", "QB-UW2", "QB-SW")) %>% 
-  #OB-UW1 not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #OB-UW1 not installed until 03-10, don't include newer downloads (post Apr 2022) in case it 
+  #screws up the model. 
+  filter(Timestamp >= "2021-03-10 2:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `OB-UW1`,
          "fill1" = `QB-UW1`,
@@ -879,21 +890,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-08-25 12:00:00" &
-#                                   Timestamp <= "2022-01-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-08-25 12:00:00" &
+                                  Timestamp <= "2022-01-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -926,6 +937,8 @@ temp <- df %>%
   filter(!Flag == "2") %>% 
   filter(Site_Name %in% c("TB-SW", "TA-SW", "ND-SW",
                           "FN-SW", "TB-UW3", "Tiger Paw Catchment Outlet")) %>% 
+  #Not including newer downloads (after Apr 2022) becuase it might screw up the model
+  filter(Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `TB-SW`,
          "fill1" = `TA-SW`,
@@ -955,21 +968,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4, fill5))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                       filter(Timestamp >= "2021-07-25 12:00:00" &
-#                                Timestamp <= "2022-01-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#   geom_line() +
-#   geom_line(aes(y = prediction),
-#             size = 0.1,
-#             color = "tomato")  +
-#   # geom_line(aes(y = prediction_delta),
-#   #           size = 0.1,
-#   #           color = "blue")  +
-#   ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                      filter(Timestamp >= "2021-07-25 12:00:00" &
+                               Timestamp <= "2022-01-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+  geom_line() +
+  geom_line(aes(y = prediction),
+            size = 0.1,
+            color = "tomato")  +
+  # geom_line(aes(y = prediction_delta),
+  #           size = 0.1,
+  #           color = "blue")  +
+  ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -999,6 +1012,8 @@ rm(model, temp, test_plot)
 temp <- df %>% 
   filter(!Flag == "2") %>% 
   filter(Site_Name %in% c("TB-UW2", "DB-UW1", "TB-UW1", "TB-UW3")) %>% 
+  #Don't include the newer downloads (after Apr 2022) because it may screw up the model
+  filter(Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `TB-UW2`,
          "fill1" = `DB-UW1`,
@@ -1023,18 +1038,18 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                       filter(Timestamp >= "2020-07-25 12:00:00" &
-#                                Timestamp <= "2020-10-30 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#   geom_line() +
-#   geom_line(aes(y = prediction),
-#             size = 0.1,
-#             color = "tomato")  +
-#   ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                      filter(Timestamp >= "2020-07-25 12:00:00" &
+                               Timestamp <= "2020-10-30 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+  geom_line() +
+  geom_line(aes(y = prediction),
+            size = 0.1,
+            color = "tomato")  +
+  ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -1063,8 +1078,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("TS-CH", "TS-SW", "ND-UW2", "DK-UW1")) %>% 
-  #TS-CH not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #TS-CH not installed until 03-10. Also, don't include the downloads after Apr 2022,
+  #since it may screw up the model. 
+  filter(Timestamp >= "2021-03-10 10:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `TS-CH`,
          "fill1" = `TS-SW`,
@@ -1090,21 +1106,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-09-25 12:00:00" &
-#                                   Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-09-25 12:00:00" &
+                                  Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -1134,8 +1150,9 @@ rm(model, temp, test_plot)
 
 temp <- df %>% 
   filter(Site_Name %in% c("TS-UW1", "TS-SW", "ND-UW1", "DK-UW2")) %>% 
-  #ND-UW1 not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #TS-UW1 not installed until 03-10. Also, don't include the downloads after Apr 2022,
+  #since it may screw up the model. 
+  filter(Timestamp >= "2021-03-10 10:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>% 
   rename("gap" = `TS-UW1`,
          "fill1" = `TS-SW`,
@@ -1161,21 +1178,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3))
 
 #Compare modeled prediction to data 
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-09-25 12:00:00" &
-#                                   Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-09-25 12:00:00" &
+                                  Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>% 
@@ -1206,8 +1223,9 @@ rm(model, temp, test_plot)
 temp <- df %>%
   filter(Site_Name %in% c("XB-SW", "QB-SW", "JA-SW", "TI-SW",
                           "JC-SW", "TP-CH", "QB-UW1")) %>%
-  #XB-SW not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>%
+  #XB-SW not installed until 03-10. Also, don't include the downloads after Apr 2022,
+  #since it may screw up the model. 
+  filter(Timestamp >= "2021-03-10 10:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>%
   rename("gap" = `XB-SW`,
          "fill1" = `QB-SW`,
@@ -1239,21 +1257,21 @@ temp <- temp %>%
   select(-c(fill1, fill2, fill3, fill4, fill5, fill6))
 
 #Compare modeled prediction to data
-# test_plot <- ggplot(data = temp %>%
-#                            filter(Timestamp >= "2021-09-25 12:00:00" &
-#                                   Timestamp <= "2021-12-31 12:00:00"),
-#                     mapping = aes(x = Timestamp,
-#                                   y = gap)) +
-#              geom_line() +
-#              geom_line(aes(y = prediction),
-#                         size = 0.1,
-#                         color = "tomato")  +
-#              geom_line(aes(y = prediction_delta),
-#                         size = 0.1,
-#                         color = "blue")  +
-#              ylab("waterLevel (m)")
-# 
-# (test_plot)
+test_plot <- ggplot(data = temp %>%
+                           filter(Timestamp >= "2021-09-25 12:00:00" &
+                                  Timestamp <= "2021-12-31 12:00:00"),
+                    mapping = aes(x = Timestamp,
+                                  y = gap)) +
+             geom_line() +
+             geom_line(aes(y = prediction),
+                        size = 0.1,
+                        color = "tomato")  +
+             geom_line(aes(y = prediction_delta),
+                        size = 0.1,
+                        color = "blue")  +
+             ylab("waterLevel (m)")
+
+(test_plot)
 
 #Add predicted values to data and note flags accordingly
 temp <- temp %>%
@@ -1283,8 +1301,9 @@ rm(model, temp, test_plot)
 temp <- df %>%
   filter(Site_Name %in% c("XB-UW1", "JB-UW1", "QB-UW1", "QB-UW2", 
                           "TP-CH", "JC-UW1", "JB-UW2")) %>%
-  #QB-UW1 not installed until 03-10, but other sites installed way longer
-  filter(Timestamp >= "2021-03-10 10:00:00") %>% 
+  #XB-UW1 not installed until 03-10. Also, don't include the downloads after Apr 2022,
+  #since it may screw up the model. 
+  filter(Timestamp >= "2021-03-10 10:00:00" & Timestamp <= "2022-04-06 12:00:00") %>% 
   pivot_wider(names_from = Site_Name, values_from = waterLevel) %>%
   rename("gap" = `XB-UW1`,
          "fill1" =`JB-UW1`,

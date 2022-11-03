@@ -9,7 +9,8 @@
 #  - DB-SW serial number did not read in when using the download function. 
 #    The column name was weird ("Abs Pres, kPa (LGR S/N: 10258771, SEN S/N: 10258771, LBL: PSI)")
 #    Since the SN had "LBL : PSI "after it, download_fun broke. Manually assigned SN to the site
-#  - Need to re-evaluate the offset for ND-SW, TB-SW
+#  - Need to have three offsets for DB-SW 
+#  - Need to re-evaluate the offset for ND-SW, TB-SW, JB-SW
 #  - QB-SW filled with sediment creating a new lower bound for water level?? Measurement check still looks good.
 #  - logger problems at JC-SW. Download is probably useless. 
 
@@ -234,7 +235,7 @@ offset_temp <- offset %>%
 (offset_temp)
 
 #Filter based on the correct version number
-#!!! Need two offsets for this well's download. Moved well on 9/4/2022
+#!!! Need multiple offsets for this well's download. Moved well on 9/4/2022
 offset_temp1 <- offset_temp %>% 
   filter(Version_num == "One") %>% 
   pull(offset) 
