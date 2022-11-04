@@ -1108,7 +1108,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
@@ -1267,7 +1267,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
@@ -2823,7 +2823,7 @@ checks_plot <- ggplot(data = checks,
 
 (checks_plot)
 
-#Filter the sites with problematic
+#Filter the sites with problematic measured differences (within 5 cm)
 problems <- checks %>%
   select(c(measured_diff, Notes, Site_Name)) %>%
   filter(measured_diff >= 0.05 | measured_diff <= -0.05)

@@ -1070,7 +1070,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "One") %>% 
+  filter(Version_num == "Two") %>% 
   pull(offset) 
 
 #Estimate water level
