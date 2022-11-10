@@ -9,8 +9,6 @@
 #  - DB-SW serial number did not read in when using the download function. 
 #    The column name was weird ("Abs Pres, kPa (LGR S/N: 10258771, SEN S/N: 10258771, LBL: PSI)")
 #    Since the SN had "LBL : PSI "after it, download_fun broke. Manually assigned SN to the site
-#  - Need to have three offsets for DB-SW 
-#  - Need to re-evaluate the offset for ND-SW, TB-SW, JB-SW
 #  - QB-SW filled with sediment creating a new lower bound for water level?? Measurement check still looks good.
 #  - logger problems at JC-SW. Download is probably useless. 
 
@@ -247,8 +245,9 @@ offset_temp3 <- offset_temp %>%
 #Estimate water level
 temp <- df %>% 
   filter(Site_Name == site) %>%
-  #Apply different offsets before and after well removal and cleaning on 9/4/2022
-  mutate(waterLevel = if_else(Timestamp >= "2022-09-04 13:45:00",
+  #Apply different offsets before and after well removal and cleaning on 9/4/2022 as well as 
+  #the change after the Apr 10th 2022 download.
+  mutate(waterLevel = if_else("2022-09-04 12:00:00" >= Timestamp & Timestamp >= "2022-04-10 10:45:00",
                               waterHeight + offset_temp3,
                               waterHeight + offset_temp1)) %>% 
   filter(!is.na(waterLevel)) %>% 
@@ -413,7 +412,7 @@ offset_temp <- offset %>%
 
 #Filter based on the correct version number
 offset_temp <- offset_temp %>% 
-  filter(Version_num == "Two") %>% 
+  filter(Version_num == "Three") %>% 
   pull(offset) 
 
 #Estimate water level

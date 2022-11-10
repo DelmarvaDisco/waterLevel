@@ -168,7 +168,9 @@ checks_interest_from_df <- checks_from_df %>%
 
 # checks_interest_from_processing <- checks 
 
-checks_interest <- checks_interest_from_df 
+checks_interest <- checks_interest_from_df %>% 
+  filter(!Site_ID %in% c("Jones Road North Catchment Outlet", "Jones Road South Catchment Outlet",
+                         "TS-CH"))
 
 #Plot differences between sensors and field measured values for checks. 
 checks_plot <- ggplot(data = checks_interest,
@@ -203,7 +205,7 @@ rm(checks, checks_from_df, checks_plot)
 
 df_interest <- df %>%
   #Select sites of interest
-  filter(Site_ID %in% c("JB-SW")) %>%
+  filter(Site_ID %in% c("TB-SW")) %>%
   #Add 100 to waterlevel since dygraphs struggles with negative numbers
   mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
   rename(Timestamp = Date) %>%
