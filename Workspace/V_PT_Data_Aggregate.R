@@ -87,44 +87,44 @@ df <- read_csv(file = paste0(data_dir, "output_JM_2019_2022.csv")) %>%
 # the tape-measurements if the sensor dies before downloading data. For sites with dead/full PTs, I use the modeled
 # data for those checks. 
 
-#List of sites that filled up with data in Fall 2021
-lost_F2021 <- c("BD-CH", "DK-CH", "HB-SW", "HB-UW1", "MB-CH", "MB-SW", "MB-UW1", 
-                "OB-CH", "OB-SW", "OB-UW1", "TS-CH", "TS-UW1", "XB-SW", "XB-UW1",
-                "TB-SW")
-
-temp <- checks %>% 
-  #Filter sites in the lost_F2021 list AND that match the download date.
-  filter((file == "data//checks_20211112_JM.csv" &
-         Site_ID %in% lost_F2021) |
-         (file == "data//checks_20201015_JM.csv" &
-         Site_ID == "TB-UW2")) %>% 
-  #Notes mentioning use of modeled data
-  mutate(Notes = paste0(Notes, ". Used modeled data for check, becuase PT died early.")) %>%
-  #Remove columns to change the values. 
-  select(-c(measured_diff, sensor_wtrlvl)) %>% 
-  #Join df with temp to get modeled values to replace incorrect checks. 
-  left_join(., df %>% 
-              #Remove the Notes column from df, so there's not duplicate Notes columns after the join. 
-              select(-c(Notes)), 
-            by = c("Date", "Site_ID")) %>% 
-  #Use modeled data to calculate checks
-  mutate(sensor_wtrlvl = dly_mean_wtrlvl,
-         measured_diff = dly_mean_wtrlvl - Relative_water_level_m) %>% 
-  #Remove extra columns
-  select(-c(dly_mean_wtrlvl, Flag))
-
-checks <- checks %>% 
-  #Remove the incorrect checks from the checks file.
-  filter(!(file == "data//checks_20211112_JM.csv" &
-         Site_ID %in% lost_F2021)| 
-         (file == "data//checks_20201015_JM.csv" &
-         Site_ID == "TB-UW2")) 
-
-#Combine original checks with modeled values in temp. 
-checks <- bind_rows(checks, temp)
-  
-#Clean up environment
-rm(temp, lost_F2021)
+# #List of sites that filled up with data in Fall 2021
+# lost_F2021 <- c("BD-CH", "DK-CH", "HB-SW", "HB-UW1", "MB-CH", "MB-SW", "MB-UW1", 
+#                 "OB-CH", "OB-SW", "OB-UW1", "TS-CH", "TS-UW1", "XB-SW", "XB-UW1",
+#                 "TB-SW")
+# 
+# temp <- checks %>% 
+#   #Filter sites in the lost_F2021 list AND that match the download date.
+#   filter((file == "data//checks_20211112_JM.csv" &
+#          Site_ID %in% lost_F2021) |
+#          (file == "data//checks_20201015_JM.csv" &
+#          Site_ID == "TB-UW2")) %>% 
+#   #Notes mentioning use of modeled data
+#   mutate(Notes = paste0(Notes, ". Used modeled data for check, becuase PT died early.")) %>%
+#   #Remove columns to change the values. 
+#   select(-c(measured_diff, sensor_wtrlvl)) %>% 
+#   #Join df with temp to get modeled values to replace incorrect checks. 
+#   left_join(., df %>% 
+#               #Remove the Notes column from df, so there's not duplicate Notes columns after the join. 
+#               select(-c(Notes)), 
+#             by = c("Date", "Site_ID")) %>% 
+#   #Use modeled data to calculate checks
+#   mutate(sensor_wtrlvl = dly_mean_wtrlvl,
+#          measured_diff = dly_mean_wtrlvl - Relative_water_level_m) %>% 
+#   #Remove extra columns
+#   select(-c(dly_mean_wtrlvl, Flag))
+# 
+# checks <- checks %>% 
+#   #Remove the incorrect checks from the checks file.
+#   filter(!(file == "data//checks_20211112_JM.csv" &
+#          Site_ID %in% lost_F2021)| 
+#          (file == "data//checks_20201015_JM.csv" &
+#          Site_ID == "TB-UW2")) 
+# 
+# #Combine original checks with modeled values in temp. 
+# checks <- bind_rows(checks, temp)
+#   
+# #Clean up environment
+# rm(temp, lost_F2021)
 
 # 3.2 Pull checks values from full data frame -------------------------------------------------
 
@@ -169,8 +169,7 @@ checks_interest_from_df <- checks_from_df %>%
 # checks_interest_from_processing <- checks 
 
 checks_interest <- checks_interest_from_df %>% 
-  filter(!Site_ID %in% c("Jones Road North Catchment Outlet", "Jones Road South Catchment Outlet",
-                         "TS-CH"))
+  filter(!Site_ID %in% c("Jones Road North Catchment Outlet", "Jones Road South Catchment Outlet"))
 
 #Plot differences between sensors and field measured values for checks. 
 checks_plot <- ggplot(data = checks_interest,
@@ -181,12 +180,14 @@ checks_plot <- ggplot(data = checks_interest,
                                      preserve = "single"),
            color = "black",
            width = 1) +
+  #Add lines at -5cm and 5cm threshold
   geom_hline(yintercept = 0.05, 
              color = "tomato", 
              size = 0.75) +
   geom_hline(yintercept = -0.05, 
              color = "tomato",
              size = 0.75) +
+  #Aesthetics stuff
   theme_bw() +
   theme(axis.text = element_text(size = 8,
                                  face = "bold",
@@ -197,6 +198,7 @@ checks_plot <- ggplot(data = checks_interest,
         panel.grid.major.x = element_line(size = 0.25, color = "grey"))+
   ylab("Meters difference (sensor - field)")
 
+#View the plot
 (checks_plot)
 
 rm(checks, checks_from_df, checks_plot)
@@ -205,7 +207,7 @@ rm(checks, checks_from_df, checks_plot)
 
 df_interest <- df %>%
   #Select sites of interest
-  filter(Site_ID %in% c("TB-SW")) %>%
+  filter(Site_ID %in% c("HB-SW")) %>%
   #Add 100 to waterlevel since dygraphs struggles with negative numbers
   mutate(waterLevel = dly_mean_wtrlvl + 100) %>% 
   rename(Timestamp = Date) %>%
